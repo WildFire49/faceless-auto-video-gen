@@ -1,5 +1,5 @@
 # REWIND — Faceless History Shorts Studio
-### Technical Specification v2.0 — Go API · Python AI (gRPC) · Next.js + MUI
+### Technical Specification v2.1 — Go API · Python AI (gRPC) · Next.js + MUI
 
 > **Series concept:** Every episode takes an everyday object (iron, mouse, sandals…) and time-travels
 > from its oldest version to today, one era every ~5 seconds. Real, sourced history — told with dry,
@@ -278,7 +278,7 @@ TypeScript client. One proto, three languages, zero hand-written API types.
 | Layer | Choice | Why | Alternative |
 |---|---|---|---|
 | Framework | **Next.js 15, App Router, TypeScript** | Local-only dashboard, but real routing/components | Vite + React |
-| UI kit | **MUI v6** (`@mui/material`, `@mui/x-data-grid`) + Emotion | Batteries-included tables, dialogs, sliders — exactly what gates A–F need | — |
+| UI kit | **MUI v7** (`@mui/material`, `@mui/x-data-grid`) + Emotion | Batteries-included tables, dialogs, sliders — exactly what gates A–F need. v7 rather than the v6 named earlier: Next 15 ships React 19, which MUI supports cleanly from v7 | — |
 | Styling | Emotion via MUI `sx` + a custom `theme.ts` | **No Tailwind anywhere in this repo** | — |
 | Design language | Apple-style: SF-ish type scale, 12–20px radii, translucent surfaces, spring motion, restraint | See Section 8.1 | — |
 | Motion | `framer-motion` springs (never linear easing) | Interruptible, physical gate transitions | CSS transitions |
@@ -423,8 +423,10 @@ rewind/
 │   │   │   ├── base.py  compositor.py  dead_zone.py  loop_preview.py
 │   │   │   ├── presets/           #   caption/motion/transition strategies
 │   │   │   └── providers/         #   moviepy.py · ffmpeg_direct.py
-│   │   └── gen/rewind/v1/         # generated Python stubs (committed)
 │   └── tests/                     # pytest + offline fixtures (mirrors the tree above)
+│   └── rewind/v1/                 # generated Python stubs (committed), a TOP-LEVEL
+│                                  # package so protoc's absolute `from rewind.v1
+│                                  # import ...` resolves with no sys.path hacks
 │
 ├── web/                       # ── NEXT.JS: the review dashboard ──
 │   ├── package.json
@@ -927,7 +929,7 @@ ridiculous, speaks like a friend — not a teacher. Deadpan, never shouty.
 
 ---
 
-## 8. Review Dashboard (`web/`, Next.js 15 + MUI v6)
+## 8. Review Dashboard (`web/`, Next.js 15 + MUI v7)
 
 **Home** (`app/page.tsx`): MUI DataGrid of all videos — topic · status chip · current gate ·
 updated. Filter "needs my review". Clicking a row routes to that video's current gate page.
@@ -1095,7 +1097,7 @@ stubbed LLM, asserts the browser API returns the right status.
 | **Backend language** | Go / Python | ☑ **Go** (api/), Python for AI only |
 | **Inter-service transport** | gRPC / REST / message queue | ☑ **gRPC** (Go → Python), Connect/JSON (browser → Go) |
 | **Frontend** | Next.js / Streamlit | ☑ **Next.js 15 + TypeScript** |
-| **UI kit** | MUI / shadcn+Tailwind | ☑ **MUI v6 only** — shadcn requires Tailwind, which is excluded |
+| **UI kit** | MUI / shadcn+Tailwind | ☑ **MUI v7 only** — shadcn requires Tailwind, which is excluded |
 | **Design language** | Apple-style via custom MUI theme | ☑ yes (§8.1) |
 | **Repo** | `git@github.com:WildFire49/faceless-auto-video-gen.git` | ☑ |
 | Channel name | Rewind / Before It Was Easy / your idea | ☐ |
@@ -1105,7 +1107,7 @@ stubbed LLM, asserts the browser API returns the right status.
 | Video length | 45s (9 beats) / 60s (12 beats) | ☐ |
 | Research sources v1 | Wikipedia + your URLs / + SearXNG web search | ☐ |
 | First 3 topics | iron, mouse, sandals / your picks | ☐ |
-| Your GPU | model + VRAM | ☐ |
+| Your GPU | model + VRAM | ☑ **NVIDIA RTX 4060 Laptop, 8188 MB VRAM** (measured by the M0 GPU probe) — meets the ≥8 GB target, so no CPU fallback is needed; still worth choosing `qwen2.5:7b` over `14b` |
 
 ---
 
@@ -1167,9 +1169,14 @@ All five must pass before merge. Branch protection on `main`.
 - Dependabot on; `govulncheck` + `pip-audit` + `npm audit` in CI weekly.
 
 ### 13.6 Developer experience
-- `make setup` — installs buf, Go tools, `uv sync`, `npm ci`, pulls the Ollama model.
-- `make dev` — runs all three services with colourised interleaved logs.
-- `make proto` — regenerates Go, Python and TypeScript stubs in one shot.
+- `task setup` — installs buf and the protoc plugins, Go modules, the Python 3.11 venv, npm packages.
+- `task dev` — runs all three services together; `task dev:nopython` runs the dashboard and API
+  against the fake AI adapter for UI work.
+- `task proto` — regenerates Go, Python and TypeScript stubs in one shot.
+- **Task runner is [go-task](https://taskfile.dev), not `make`.** GNU make is not present on
+  Windows, which is the target machine, and installing it is a detour. go-task is a single Go
+  binary installed with the toolchain already required, and behaves identically on all three
+  platforms. `Taskfile.yml` replaces the Makefile named earlier in this section.
 - `README.md` gets a real "get it running in 10 minutes on Windows" section, since that is the
   target machine.
 - `.editorconfig`, plus pre-commit hooks running `buf format`, `gofmt`, `ruff`, `prettier`.

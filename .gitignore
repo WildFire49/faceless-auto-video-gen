@@ -26,6 +26,7 @@ assets/sfx/*
 *.out
 
 # ── Python ──
+.import_linter_cache/
 __pycache__/
 *.py[cod]
 .venv/
@@ -34,6 +35,10 @@ venv/
 .pytest_cache/
 .ruff_cache/
 *.egg-info/
+
+# NOTE: generated protobuf code (api/gen, ai/rewind, web/lib/gen) is
+# deliberately COMMITTED, so a fresh clone builds without the proto toolchain
+# and CI can fail on drift (SPEC.md 13.2).
 
 # ── Node / Next.js ──
 node_modules/
@@ -48,3 +53,4 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+next-env.d.ts

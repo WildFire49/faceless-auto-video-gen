@@ -1,0 +1,15 @@
+version: v2
+
+# TypeScript stubs for the dashboard.
+#
+# Run this via `npm run proto` from web/, NOT directly: npm puts
+# node_modules/.bin on PATH, which is how buf finds protoc-gen-es on every OS
+# (on Windows the executable is protoc-gen-es.cmd, so naming the path by hand
+# fails). Paths below are relative to web/ for the same reason.
+#
+# protoc-gen-es v2 emits service descriptors as well as messages, and
+# @connectrpc/connect-web consumes them directly -- no separate Connect plugin.
+plugins:
+  - local: protoc-gen-es
+    out: lib/gen
+    opt: target=ts

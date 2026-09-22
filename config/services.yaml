@@ -1,0 +1,38 @@
+# Ports, addresses and deadlines for all three services (SPEC.md 4.2).
+#
+# Nothing in the code may hard-code a port, an address or a timeout. If a human
+# might reasonably want to change a number, it lives in config/.
+#
+# Everything binds to 127.0.0.1 on purpose: REWIND is a local studio, not an
+# internet-facing service (SPEC.md 13.5).
+
+api:
+  http_addr: "127.0.0.1:8080" # the Next.js dashboard talks here
+  db_path: "rewind.db"
+  # Browser origins allowed to call the API. The dashboard's dev server only.
+  cors_origins:
+    - "http://localhost:3000"
+    - "http://127.0.0.1:3000"
+  shutdown_grace_seconds: 20 # time to drain in-flight work on Ctrl-C
+
+ai:
+  grpc_addr: "127.0.0.1:50051" # the Go API talks here
+  max_message_bytes: 4194304 # 4 MB. We pass paths, never media.
+  # Per-RPC deadlines. On expiry Go cancels the stream and records an error,
+  # so a wedged model can never hang the pipeline forever.
+  timeouts_seconds:
+    health: 5
+    research: 300
+    relevance: 120
+    script: 180
+    voice: 900
+    visuals: 1800
+    captions: 300
+    render: 1200
+
+web:
+  api_base_url: "http://127.0.0.1:8080"
+
+paths:
+  projects: "projects"
+  assets: "assets"

@@ -1,0 +1,211 @@
+# REWIND task runner.
+#
+# SPEC.md 13.6 originally specified a Makefile. GNU make is not present on
+# Windows, which is the target machine (SPEC.md 13.6, "get it running in 10
+# minutes on Windows"), and installing it is a detour. go-task is a single Go
+# binary, installs with the toolchain already required, and behaves identically
+# on Windows, macOS and Linux -- so it replaces make. See SPEC.md 13.6.
+#
+#   task setup    install every toolchain dependency
+#   task proto    regenerate Go, Python and TypeScript stubs
+#   task dev      run all three services together
+#   task test     run every test suite
+#   task check    everything CI runs
+
+version: "3"
+
+vars:
+  # Absolute, because tasks that use PY run with `dir: ai` -- a relative path
+  # would resolve against that directory and miss.
+  VENV_BIN: '{{if eq OS "windows"}}Scripts{{else}}bin{{end}}'
+  PY: '{{.TASKFILE_DIR}}/ai/.venv/{{.VENV_BIN}}/python{{exeExt}}'
+  VENV_PATH: '{{.TASKFILE_DIR}}/ai/.venv/{{.VENV_BIN}}'
+  PATH_SEP: '{{if eq OS "windows"}};{{else}}:{{end}}'
+
+tasks:
+  default:
+    cmds:
+      - task --list
+    silent: true
+
+  # ----------------------------------------------------------------- setup --
+  setup:
+    desc: Install all toolchain dependencies (run once)
+    cmds:
+      - task: setup:proto
+      - task: setup:go
+      - task: setup:python
+      - task: setup:web
+      - echo "Setup complete. Run 'task dev'."
+
+  setup:proto:
+    desc: Install buf and the protoc plugins
+    cmds:
+      - go install github.com/bufbuild/buf/cmd/buf@v1.47.2
+      - go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.1
+      - go install connectrpc.com/connect/cmd/protoc-gen-connect-go@v1.18.1
+      - go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
+
+  setup:go:
+    dir: api
+    cmds:
+      - go mod download
+
+  setup:python:
+    dir: ai
+    desc: Create the 3.11 venv and install the worker
+    cmds:
+      - uv venv --python 3.11
+      - uv pip install -e ".[dev]"
+
+  setup:web:
+    dir: web
+    cmds:
+      - npm ci
+
+  # ----------------------------------------------------------------- proto --
+  proto:
+    desc: Regenerate stubs for all three languages
+    cmds:
+      - task: proto:lint
+      - task: proto:go
+      - task: proto:python
+      - task: proto:es
+
+  proto:lint:
+    dir: proto
+    cmds:
+      - buf lint
+      - buf format --diff --exit-code
+
+  proto:go:
+    dir: proto
+    cmds:
+      - buf generate --template buf.gen.go.yaml
+
+  proto:python:
+    dir: ai
+    # grpc_tools ships protoc itself rather than a protoc plugin, so it is
+    # invoked directly instead of through buf (see proto/buf.gen.go.yaml).
+    #
+    # Output goes to ai/ root, so the generated `from rewind.v1 import ...`
+    # absolute imports resolve as an ordinary top-level package -- no sys.path
+    # manipulation, and nothing an import sorter can reorder into breaking.
+    #
+    # mypy_out/mypy_grpc_out (from mypy-protobuf) rather than protoc's own
+    # pyi_out: protoc does not emit stubs for the *_pb2_grpc service modules,
+    # which would leave every servicer and stub typed Any under mypy --strict.
+    #
+    # The mypy plugins are named by absolute path rather than found on PATH:
+    # they live in the venv, and --plugin= is deterministic on every OS.
+    cmds:
+      - >-
+        {{.PY}} -m grpc_tools.protoc -I ../proto
+        --plugin=protoc-gen-mypy={{.VENV_PATH}}/protoc-gen-mypy{{exeExt}}
+        --plugin=protoc-gen-mypy_grpc={{.VENV_PATH}}/protoc-gen-mypy_grpc{{exeExt}}
+        --python_out=. --grpc_python_out=. --mypy_out=. --mypy_grpc_out=.
+        ../proto/rewind/v1/*.proto
+
+  proto:es:
+    dir: web
+    # Via npm so node_modules/.bin lands on PATH; that is how buf finds
+    # protoc-gen-es on Windows, where it is a .cmd.
+    cmds:
+      - npm run proto
+
+  # ------------------------------------------------------------------- dev --
+  dev:
+    desc: Run the AI worker, the Go API and the dashboard together
+    deps:
+      - dev:ai
+      - dev:api
+      - dev:web
+
+  dev:ai:
+    dir: ai
+    cmds:
+      - "{{.PY}} -m rewind_ai.server --llm-model qwen2.5:14b"
+
+  dev:api:
+    dir: api
+    cmds:
+      - go run ./cmd/rewind-api
+
+  dev:web:
+    dir: web
+    cmds:
+      - npm run dev
+
+  # Runs the dashboard and API without Python, for UI work.
+  dev:nopython:
+    desc: Run the API with the fake AI worker plus the dashboard
+    deps:
+      - dev:api:fake
+      - dev:web
+
+  dev:api:fake:
+    dir: api
+    cmds:
+      - go run ./cmd/rewind-api --fake-ai
+
+  # ------------------------------------------------------------------ test --
+  test:
+    desc: Run every test suite
+    cmds:
+      - task: test:go
+      - task: test:python
+      - task: test:web
+
+  test:go:
+    dir: api
+    cmds:
+      - go test ./...
+
+  # -race needs cgo, which needs a C compiler. Windows dev machines usually
+  # have none, so the race detector runs on CI (Linux) rather than locally.
+  test:go:race:
+    dir: api
+    env:
+      CGO_ENABLED: 1
+    cmds:
+      - go test -race ./...
+
+  test:python:
+    dir: ai
+    cmds:
+      - "{{.PY}} -m pytest"
+
+  test:web:
+    dir: web
+    cmds:
+      - npm run typecheck
+
+  # ----------------------------------------------------------------- check --
+  check:
+    desc: Everything CI runs
+    cmds:
+      - task: proto:lint
+      - task: lint:go
+      - task: lint:python
+      - task: lint:web
+      - task: test
+
+  lint:go:
+    dir: api
+    cmds:
+      - go vet ./...
+      - gofmt -l .
+
+  lint:python:
+    dir: ai
+    cmds:
+      - "{{.PY}} -m ruff check ."
+      - "{{.PY}} -m ruff format --check ."
+      - "{{.PY}} -m mypy"
+      - "{{.PY}} -m importlinter.cli lint"
+
+  lint:web:
+    dir: web
+    cmds:
+      - npm run typecheck
+      - npm run lint

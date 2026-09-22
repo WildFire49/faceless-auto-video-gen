@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package rewind.v1;
+
+import "rewind/v1/health.proto";
+
+// RewindService is the API the Next.js dashboard calls. Go serves it over the
+// Connect protocol, which is plain JSON over HTTP -- browsers cannot speak
+// native gRPC (SPEC.md 2.5).
+//
+// This service is the OUTER edge. The gRPC services in the other files are the
+// INNER edge, between Go and the Python worker. They are deliberately separate:
+// the dashboard's shape should be free to change without touching the worker
+// contract, and vice versa.
+service RewindService {
+  // GetSystemHealth reports the health of every service in the system. In M0
+  // this is the only RPC, and it is what turns the dashboard chip green.
+  rpc GetSystemHealth(GetSystemHealthRequest) returns (GetSystemHealthResponse);
+}
+
+message GetSystemHealthRequest {
+  // Forwarded to the AI worker; see CheckRequest.deep.
+  bool deep = 1;
+}
+
+message GetSystemHealthResponse {
+  // Worst status across every component.
+  HealthStatus status = 1;
+  // The Go API itself. Always reachable if this response arrived at all, but
+  // carries the build version.
+  ComponentHealth api = 2;
+  // The Python AI worker, reached over gRPC. This is the interesting one: it
+  // is DOWN when the worker is stopped, and the dashboard must degrade
+  // gracefully rather than error.
+  ComponentHealth ai = 3;
+}
+
+message ComponentHealth {
+  string name = 1;
+  HealthStatus status = 2;
+  string version = 3;
+  // Populated on failure, e.g. "dial tcp 127.0.0.1:50051: connection refused".
+  string detail = 4;
+  // Round-trip time of the check, in milliseconds.
+  int64 latency_ms = 5;
+  // Per-dependency detail, only when deep was requested.
+  repeated Dependency dependencies = 6;
+}

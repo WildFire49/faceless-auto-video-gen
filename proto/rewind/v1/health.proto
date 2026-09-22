@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package rewind.v1;
+
+// HealthService is the only service M0 implements. It exists so the whole
+// spine -- browser to Go to gRPC to Python -- can be proven end to end before
+// any AI code is written, and so `rewind doctor` has something to call later.
+service HealthService {
+  // Check reports whether the AI worker and its dependencies are usable.
+  rpc Check(CheckRequest) returns (CheckResponse);
+}
+
+message CheckRequest {
+  // When true, the worker probes its heavy dependencies (Ollama reachable,
+  // model pulled, GPU visible, ffmpeg on PATH) instead of only reporting that
+  // the process is alive. `rewind doctor` sets this; a dashboard poll does not.
+  bool deep = 1;
+}
+
+// Status of one dependency, or of the worker overall.
+enum HealthStatus {
+  HEALTH_STATUS_UNSPECIFIED = 0;
+  // Everything needed is present and working.
+  HEALTH_STATUS_OK = 1;
+  // Usable, but something is missing that will matter in a later milestone.
+  HEALTH_STATUS_DEGRADED = 2;
+  // Cannot do useful work.
+  HEALTH_STATUS_DOWN = 3;
+}
+
+// One probed dependency, e.g. "ollama", "gpu", "ffmpeg".
+message Dependency {
+  string name = 1;
+  HealthStatus status = 2;
+  // Short human-readable detail, e.g. "model qwen2.5:14b not pulled".
+  string detail = 3;
+}
+
+message CheckResponse {
+  // Worst status across all dependencies.
+  HealthStatus status = 1;
+  // Version of the AI worker, for the dashboard footer and bug reports.
+  string version = 2;
+  // Only populated when the request set deep = true.
+  repeated Dependency dependencies = 3;
+}

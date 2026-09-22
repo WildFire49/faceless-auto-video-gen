@@ -1,0 +1,14 @@
+# Normalise line endings. Without this, files committed from Windows can carry
+# CRLF into CI, where `gofmt -l` and `ruff format --check` then fail on every
+# line of every file.
+* text=auto eol=lf
+
+# Generated code is committed (SPEC.md 13.2). Marking it keeps diffs collapsed
+# in review and keeps it out of language statistics.
+api/gen/**        linguist-generated=true
+ai/rewind/**      linguist-generated=true
+web/lib/gen/**    linguist-generated=true
+
+*.png binary
+*.wav binary
+*.mp4 binary

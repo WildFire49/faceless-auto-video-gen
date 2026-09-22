@@ -1,0 +1,112 @@
+[project]
+name = "rewind-ai"
+version = "0.1.0"
+description = "REWIND AI worker. All model and media work; no state (SPEC.md 2.4)."
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "grpcio>=1.68.0",
+    "protobuf>=5.28.0",
+    "pyyaml>=6.0.2",
+    "structlog>=24.4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "grpcio-tools>=1.68.0",
+    "mypy>=1.13.0",
+    "mypy-protobuf>=3.6.0",
+    "grpc-stubs>=1.53.0.5",
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "ruff>=0.8.0",
+    "types-protobuf>=5.28.0",
+    "types-pyyaml>=6.0.12",
+    "import-linter>=2.1",
+]
+
+[project.scripts]
+rewind-ai = "rewind_ai.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["rewind_ai", "rewind"]
+
+# ---------------------------------------------------------------- ruff -------
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+# Generated protobuf code is not ours to lint or format.
+extend-exclude = ["rewind"]  # generated protobuf code is not ours to lint
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # import sorting
+    "N",        # pep8 naming
+    "UP",       # pyupgrade
+    "B",        # bugbear
+    "C901",     # complexity -- SPEC.md 14.4 caps this at 10
+    "ANN",      # require type annotations
+    "PTH",      # use pathlib, not os.path
+    "RUF",
+]
+ignore = [
+    "ANN401",  # Any is occasionally correct at a protobuf boundary
+]
+
+[tool.ruff.lint.per-file-ignores]
+# gRPC servicer methods are named by the generator, not by us.
+"rewind_ai/handlers/*.py" = ["N802"]
+"tests/*.py" = ["ANN201", "ANN001"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+# ---------------------------------------------------------------- mypy -------
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["rewind_ai", "tests"]
+exclude = ["rewind/"]
+
+[[tool.mypy.overrides]]
+module = ["grpc.*", "grpc_tools.*", "structlog.*"]
+ignore_missing_imports = true
+
+# protoc emits .pyi stubs for messages but NOT for the *_pb2_grpc service
+# modules, so the generated servicer base class is typed Any. Subclassing it is
+# unavoidable -- it is how gRPC servicers are written -- so the rule is relaxed
+# for the transport package only, not globally.
+[[tool.mypy.overrides]]
+module = ["rewind_ai.handlers.*"]
+disallow_subclassing_any = false
+
+# ---------------------------------------------------------------- pytest -----
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = [
+    "smoke: end-to-end checks that need a running service",
+    "gpu: requires a GPU; skipped on CI",
+]
+
+# ------------------------------------------------------- import-linter -------
+# Machine-enforced layering (SPEC.md 14.1). CI fails if a layer reaches
+# somewhere it must not, so the architecture cannot erode quietly.
+[tool.importlinter]
+root_package = "rewind_ai"
+
+[[tool.importlinter.contracts]]
+name = "Layers: handlers -> modules -> core"
+type = "layers"
+layers = ["rewind_ai.handlers", "rewind_ai.core"]
+
+[[tool.importlinter.contracts]]
+name = "core is independent of handlers and providers"
+type = "forbidden"
+source_modules = ["rewind_ai.core"]
+forbidden_modules = ["rewind_ai.handlers"]

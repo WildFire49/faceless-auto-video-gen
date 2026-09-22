@@ -1,0 +1,31 @@
+version: v2
+
+# Go stubs: messages, Connect handlers (browser edge), gRPC client (AI edge).
+#
+# Generated code is COMMITTED so a fresh clone builds without the proto
+# toolchain, and CI fails if regeneration produces a diff (SPEC.md 13.2).
+#
+# Why three templates instead of one: each language's plugin resolves from a
+# different place. The Go plugins come from $GOBIN, protoc-gen-es from
+# web/node_modules/.bin (which only npm puts on PATH, and which is a .cmd on
+# Windows), and Python's stubs come from grpc_tools, which is protoc itself
+# rather than a protoc plugin. One combined template fails on Windows and
+# takes the other languages down with it.
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/WildFire49/faceless-auto-video-gen/api/gen
+
+plugins:
+  - local: protoc-gen-go
+    out: ../api/gen
+    opt: paths=source_relative
+
+  - local: protoc-gen-connect-go
+    out: ../api/gen
+    opt: paths=source_relative
+
+  - local: protoc-gen-go-grpc
+    out: ../api/gen
+    opt: paths=source_relative

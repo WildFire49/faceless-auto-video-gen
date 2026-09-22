@@ -1,0 +1,223 @@
+# CI for REWIND (SPEC.md 13.2).
+#
+# Five independent jobs. All must pass before merge to main.
+#
+# The most important one is `proto`: it regenerates the stubs and fails if the
+# result differs from what is committed. That is what stops the Go, Python and
+# TypeScript views of the contract from quietly drifting apart.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: "1.24"
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "22"
+
+jobs:
+  proto:
+    name: "proto: lint, format, breaking, codegen drift"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # buf breaking compares against main, so it needs the history.
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with: { go-version: "${{ env.GO_VERSION }}" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ env.PYTHON_VERSION }}" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}", cache: npm, cache-dependency-path: web/package-lock.json }
+
+      - name: Install proto toolchain
+        run: |
+          go install github.com/bufbuild/buf/cmd/buf@v1.47.2
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.1
+          go install connectrpc.com/connect/cmd/protoc-gen-connect-go@v1.18.1
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
+
+      - name: Lint and format protos
+        working-directory: proto
+        run: |
+          buf lint
+          buf format --diff --exit-code
+
+      - name: Check for breaking changes against main
+        if: github.event_name == 'pull_request'
+        working-directory: proto
+        run: buf breaking --against "https://github.com/${{ github.repository }}.git#branch=main,subdir=proto"
+
+      - name: Install Python and web toolchains
+        run: |
+          pip install "grpcio-tools>=1.68.0" "mypy-protobuf>=3.6.0"
+          npm ci --prefix web
+
+      - name: Regenerate every language
+        run: |
+          cd proto && buf generate --template buf.gen.go.yaml && cd ..
+          cd ai && python -m grpc_tools.protoc -I ../proto --python_out=. --grpc_python_out=. --mypy_out=. --mypy_grpc_out=. ../proto/rewind/v1/*.proto && cd ..
+          cd web && npm run proto && cd ..
+
+      - name: Fail if generated code is out of date
+        run: |
+          if ! git diff --exit-code; then
+            echo "::error::Generated code is stale. Run 'task proto' and commit the result."
+            exit 1
+          fi
+
+  go:
+    name: "go: vet, lint, test"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: "${{ env.GO_VERSION }}", cache-dependency-path: api/go.sum }
+
+      - name: gofmt
+        working-directory: api
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "::error::gofmt needed on:"; echo "$unformatted"; exit 1
+          fi
+
+      - name: go vet
+        working-directory: api
+        run: go vet ./...
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          working-directory: api
+          version: latest
+
+      # -race needs cgo, which is available here even though it usually is not
+      # on the Windows dev machine. This is the job that actually catches races.
+      - name: Test with the race detector
+        working-directory: api
+        run: go test -race -coverprofile=coverage.out ./...
+
+  python:
+    name: "python: ruff, mypy, layers, pytest"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ env.PYTHON_VERSION }}" }
+
+      - name: Install
+        working-directory: ai
+        run: |
+          uv venv --python ${{ env.PYTHON_VERSION }}
+          uv pip install -e ".[dev]"
+
+      - name: ruff
+        working-directory: ai
+        run: |
+          .venv/bin/python -m ruff check .
+          .venv/bin/python -m ruff format --check .
+
+      - name: mypy --strict
+        working-directory: ai
+        run: .venv/bin/python -m mypy
+
+      # Machine-enforced layering (SPEC.md 14.1). Without this the architecture
+      # erodes one convenient import at a time.
+      - name: import-linter
+        working-directory: ai
+        run: .venv/bin/lint-imports
+
+      # No GPU and no network on CI: every test uses offline fixtures.
+      - name: pytest
+        working-directory: ai
+        run: .venv/bin/python -m pytest -m "not gpu"
+
+  web:
+    name: "web: typecheck, lint, build"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}", cache: npm, cache-dependency-path: web/package-lock.json }
+
+      - name: Install
+        working-directory: web
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: web
+        run: npm run typecheck
+
+      - name: Lint
+        working-directory: web
+        run: npm run lint
+
+      - name: Build
+        working-directory: web
+        run: npm run build
+
+  smoke:
+    name: "smoke: all three services talk"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: "${{ env.GO_VERSION }}", cache-dependency-path: api/go.sum }
+      - uses: astral-sh/setup-uv@v3
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ env.PYTHON_VERSION }}" }
+
+      - name: Install the AI worker
+        working-directory: ai
+        run: |
+          uv venv --python ${{ env.PYTHON_VERSION }}
+          uv pip install -e ".[dev]"
+
+      - name: Start the AI worker
+        working-directory: ai
+        run: |
+          nohup .venv/bin/python -m rewind_ai.server > /tmp/ai.log 2>&1 &
+          for i in $(seq 1 30); do
+            nc -z 127.0.0.1 50051 && break
+            sleep 1
+          done
+
+      - name: Start the Go API
+        working-directory: api
+        run: |
+          nohup go run ./cmd/rewind-api > /tmp/api.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf http://127.0.0.1:8080/livez && break
+            sleep 1
+          done
+
+      # The M0 acceptance criterion, asserted rather than eyeballed: a
+      # browser-shaped JSON request must reach Python over gRPC and come back OK.
+      - name: The whole spine must answer OK
+        run: |
+          response=$(curl -sf -X POST \
+            http://127.0.0.1:8080/rewind.v1.RewindService/GetSystemHealth \
+            -H 'Content-Type: application/json' -d '{"deep":false}')
+          echo "$response"
+          echo "$response" | grep -q '"ai"' || { echo "::error::no ai component in response"; exit 1; }
+          echo "$response" | grep -q 'HEALTH_STATUS_OK' || {
+            echo "::error::spine is not healthy"; cat /tmp/ai.log /tmp/api.log; exit 1;
+          }
+
+      - name: Logs on failure
+        if: failure()
+        run: cat /tmp/ai.log /tmp/api.log || true

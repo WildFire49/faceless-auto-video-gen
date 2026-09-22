@@ -96,10 +96,16 @@ interface it implements.
   All real logic lives in ordinary functions that tests can call without gRPC.
 
 ### TypeScript (`web/`)
-- Next.js 15 App Router, strict TS. **MUI v6 only — never add Tailwind or shadcn/ui.**
+- Next.js 15 App Router, strict TS. **MUI v7 only — never add Tailwind or shadcn/ui.**
 - No hand-written API types: import the generated client from `lib/gen/`.
 - All colours, radii, type scale and motion come from `web/theme/tokens.ts`. No magic values
   in page or component code. Every animation respects `prefers-reduced-motion`.
 
 ## Current milestone
-M0 — Plumbing (proto + three services saying hello). Update this line as milestones are approved.
+M0 — Plumbing: **COMPLETE**, awaiting review. Do not start M1 without an explicit
+"approved, start M1" from the user.
+
+## Commands (this repo uses go-task, not make)
+- `task dev` — all three services · `task dev:nopython` — API with the fake AI adapter
+- `task proto` — regenerate all stubs after ANY change to `proto/`
+- `task test` — every suite · `task check` — everything CI runs

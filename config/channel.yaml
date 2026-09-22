@@ -1,0 +1,43 @@
+# Channel identity and creative defaults (SPEC.md 4.1).
+#
+# Everything a human might want to tune lives here rather than in code. The
+# entries marked "decide" are still open in SPEC.md 12.
+
+channel_name: "Rewind" # decide: final name
+beat_seconds: 5.0
+target_beats: [9, 12] # 45-60s videos
+aspect: "9:16"
+resolution: [1080, 1920]
+
+voice:
+  engine: chatterbox # swap: kokoro | piper -- see SPEC.md 14.2
+  reference: assets/voice/reference.wav
+  exaggeration: { setup: 0.45, punch: 0.8, fact: 0.5 }
+  cfg_weight: 0.4
+  punch_pause_ms: 250
+
+art_style: >
+  painterly historical documentary illustration, warm candlelight palette,
+  subtle film grain, cinematic composition, vertical frame
+
+music:
+  target_bpm: 96 # one bar = 2.5s, two bars = one 5s beat
+  duck_db: -14
+
+limits:
+  max_modern_refs_per_video: 3
+  max_sfx_per_beat: 1
+  max_words_per_beat: 14
+
+llm:
+  provider: ollama # swap: openai_compat
+  model: "qwen2.5:14b" # decide: 14b vs 7b, given 8 GB VRAM
+
+visuals:
+  backend: flux_diffusers # swap: comfyui_api | sdxl
+
+captions:
+  engine: faster_whisper # swap: whisperx
+
+render:
+  backend: moviepy # swap: ffmpeg_direct
