@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package rewind.v1;
+
+import "rewind/v1/research.proto";
+
+// FactsService is the Gate A surface for the dashboard (SPEC.md 5.2, 8.2).
+//
+// Facts live in projects/<video_id>/facts.json, written by the Python worker.
+// Every edit a human makes here is written back by Go, which owns all state.
+//
+// Every mutation returns the WHOLE updated view rather than just an
+// acknowledgement. Gate A's approval rules depend on the sheet as a whole --
+// how many facts are ticked, how many eras they span -- so returning the
+// recomputed view means the dashboard can never show a stale verdict.
+service FactsService {
+  // GetFacts returns the fact sheet for review.
+  rpc GetFacts(GetFactsRequest) returns (GetFactsResponse);
+
+  // SetFactApproval ticks or unticks one fact.
+  rpc SetFactApproval(SetFactApprovalRequest) returns (SetFactApprovalResponse);
+
+  // ApproveAllFacts ticks every fact at once -- the common case when the
+  // research came back clean.
+  rpc ApproveAllFacts(ApproveAllFactsRequest) returns (ApproveAllFactsResponse);
+
+  // UpdateFact edits a fact's wording.
+  //
+  // The evidence and source_url of an extracted fact CANNOT be edited: they
+  // are the record of where the claim came from, and letting them be rewritten
+  // would defeat the verifier. Correcting a claim means editing the claim, or
+  // deleting the fact and adding your own.
+  rpc UpdateFact(UpdateFactRequest) returns (UpdateFactResponse);
+
+  // DeleteFact removes a fact from the sheet.
+  rpc DeleteFact(DeleteFactRequest) returns (DeleteFactResponse);
+
+  // AddFact adds a fact the human sourced themselves.
+  //
+  // Human-added facts skip the evidence verifier -- a person citing a book is
+  // the authority the verifier exists to substitute for -- but a source is
+  // still required, because SPEC.md 5.2 allows no unsourced claim.
+  rpc AddFact(AddFactRequest) returns (AddFactResponse);
+}
+
+// FactsView is the whole reviewable state of Gate A.
+message FactsView {
+  // False until the research step has run.
+  bool exists = 1;
+  FactSheet sheet = 2;
+
+  // Whether Gate A can be approved yet, and why not.
+  bool can_approve = 3;
+  // e.g. "6 of 8 facts approved" or "facts span only 3 eras, need 4".
+  string approval_blocker = 4;
+
+  int32 approved_count = 5;
+  int32 era_count = 6;
+}
+
+message GetFactsRequest {
+  string video_id = 1;
+}
+message GetFactsResponse {
+  FactsView view = 1;
+}
+
+message SetFactApprovalRequest {
+  string video_id = 1;
+  string fact_id = 2;
+  bool approved = 3;
+}
+message SetFactApprovalResponse {
+  FactsView view = 1;
+}
+
+message ApproveAllFactsRequest {
+  string video_id = 1;
+  bool approved = 2; // false unticks everything
+}
+message ApproveAllFactsResponse {
+  FactsView view = 1;
+}
+
+message UpdateFactRequest {
+  string video_id = 1;
+  string fact_id = 2;
+  // Only these fields are editable; evidence and source_url are not.
+  string year_label = 3;
+  int32 sort_year = 4;
+  string place = 5;
+  string claim = 6;
+}
+message UpdateFactResponse {
+  FactsView view = 1;
+}
+
+message DeleteFactRequest {
+  string video_id = 1;
+  string fact_id = 2;
+  // Recorded in the review log. Why you dropped a fact is worth keeping.
+  string reason = 3;
+}
+message DeleteFactResponse {
+  FactsView view = 1;
+}
+
+message AddFactRequest {
+  string video_id = 1;
+  string year_label = 2;
+  int32 sort_year = 3;
+  string place = 4;
+  string claim = 5;
+  // Required. A human-added fact still needs somewhere it came from.
+  string source_url = 6;
+  string evidence = 7;
+}
+message AddFactResponse {
+  FactsView view = 1;
+}

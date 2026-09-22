@@ -49,6 +49,13 @@ const (
 	// VideoServiceListReviewLogProcedure is the fully-qualified name of the VideoService's
 	// ListReviewLog RPC.
 	VideoServiceListReviewLogProcedure = "/rewind.v1.VideoService/ListReviewLog"
+	// VideoServiceRunStepProcedure is the fully-qualified name of the VideoService's RunStep RPC.
+	VideoServiceRunStepProcedure = "/rewind.v1.VideoService/RunStep"
+	// VideoServiceGetJobProcedure is the fully-qualified name of the VideoService's GetJob RPC.
+	VideoServiceGetJobProcedure = "/rewind.v1.VideoService/GetJob"
+	// VideoServiceGetLatestJobProcedure is the fully-qualified name of the VideoService's GetLatestJob
+	// RPC.
+	VideoServiceGetLatestJobProcedure = "/rewind.v1.VideoService/GetLatestJob"
 )
 
 // VideoServiceClient is a client for the rewind.v1.VideoService service.
@@ -72,6 +79,16 @@ type VideoServiceClient interface {
 	// ListReviewLog returns the human-decision history for one video. This log
 	// is the project's proof of human creative involvement (SPEC.md 8.4).
 	ListReviewLog(context.Context, *connect.Request[v1.ListReviewLogRequest]) (*connect.Response[v1.ListReviewLogResponse], error)
+	// RunStep starts the next pipeline step and returns IMMEDIATELY with a job
+	// id. Research takes minutes, so the request must never block on it
+	// (SPEC.md 8.3).
+	RunStep(context.Context, *connect.Request[v1.RunStepRequest]) (*connect.Response[v1.RunStepResponse], error)
+	// GetJob reports a running job's progress. The dashboard polls this to draw
+	// its progress bar.
+	GetJob(context.Context, *connect.Request[v1.GetJobRequest]) (*connect.Response[v1.GetJobResponse], error)
+	// GetLatestJob returns the most recent job for a video, so a page reload
+	// reattaches to work that is already running.
+	GetLatestJob(context.Context, *connect.Request[v1.GetLatestJobRequest]) (*connect.Response[v1.GetLatestJobResponse], error)
 }
 
 // NewVideoServiceClient constructs a client for the rewind.v1.VideoService service. By default, it
@@ -127,6 +144,24 @@ func NewVideoServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(videoServiceMethods.ByName("ListReviewLog")),
 			connect.WithClientOptions(opts...),
 		),
+		runStep: connect.NewClient[v1.RunStepRequest, v1.RunStepResponse](
+			httpClient,
+			baseURL+VideoServiceRunStepProcedure,
+			connect.WithSchema(videoServiceMethods.ByName("RunStep")),
+			connect.WithClientOptions(opts...),
+		),
+		getJob: connect.NewClient[v1.GetJobRequest, v1.GetJobResponse](
+			httpClient,
+			baseURL+VideoServiceGetJobProcedure,
+			connect.WithSchema(videoServiceMethods.ByName("GetJob")),
+			connect.WithClientOptions(opts...),
+		),
+		getLatestJob: connect.NewClient[v1.GetLatestJobRequest, v1.GetLatestJobResponse](
+			httpClient,
+			baseURL+VideoServiceGetLatestJobProcedure,
+			connect.WithSchema(videoServiceMethods.ByName("GetLatestJob")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -139,6 +174,9 @@ type videoServiceClient struct {
 	rejectGate    *connect.Client[v1.RejectGateRequest, v1.RejectGateResponse]
 	retryVideo    *connect.Client[v1.RetryVideoRequest, v1.RetryVideoResponse]
 	listReviewLog *connect.Client[v1.ListReviewLogRequest, v1.ListReviewLogResponse]
+	runStep       *connect.Client[v1.RunStepRequest, v1.RunStepResponse]
+	getJob        *connect.Client[v1.GetJobRequest, v1.GetJobResponse]
+	getLatestJob  *connect.Client[v1.GetLatestJobRequest, v1.GetLatestJobResponse]
 }
 
 // AddVideo calls rewind.v1.VideoService.AddVideo.
@@ -176,6 +214,21 @@ func (c *videoServiceClient) ListReviewLog(ctx context.Context, req *connect.Req
 	return c.listReviewLog.CallUnary(ctx, req)
 }
 
+// RunStep calls rewind.v1.VideoService.RunStep.
+func (c *videoServiceClient) RunStep(ctx context.Context, req *connect.Request[v1.RunStepRequest]) (*connect.Response[v1.RunStepResponse], error) {
+	return c.runStep.CallUnary(ctx, req)
+}
+
+// GetJob calls rewind.v1.VideoService.GetJob.
+func (c *videoServiceClient) GetJob(ctx context.Context, req *connect.Request[v1.GetJobRequest]) (*connect.Response[v1.GetJobResponse], error) {
+	return c.getJob.CallUnary(ctx, req)
+}
+
+// GetLatestJob calls rewind.v1.VideoService.GetLatestJob.
+func (c *videoServiceClient) GetLatestJob(ctx context.Context, req *connect.Request[v1.GetLatestJobRequest]) (*connect.Response[v1.GetLatestJobResponse], error) {
+	return c.getLatestJob.CallUnary(ctx, req)
+}
+
 // VideoServiceHandler is an implementation of the rewind.v1.VideoService service.
 type VideoServiceHandler interface {
 	// AddVideo queues a new topic.
@@ -197,6 +250,16 @@ type VideoServiceHandler interface {
 	// ListReviewLog returns the human-decision history for one video. This log
 	// is the project's proof of human creative involvement (SPEC.md 8.4).
 	ListReviewLog(context.Context, *connect.Request[v1.ListReviewLogRequest]) (*connect.Response[v1.ListReviewLogResponse], error)
+	// RunStep starts the next pipeline step and returns IMMEDIATELY with a job
+	// id. Research takes minutes, so the request must never block on it
+	// (SPEC.md 8.3).
+	RunStep(context.Context, *connect.Request[v1.RunStepRequest]) (*connect.Response[v1.RunStepResponse], error)
+	// GetJob reports a running job's progress. The dashboard polls this to draw
+	// its progress bar.
+	GetJob(context.Context, *connect.Request[v1.GetJobRequest]) (*connect.Response[v1.GetJobResponse], error)
+	// GetLatestJob returns the most recent job for a video, so a page reload
+	// reattaches to work that is already running.
+	GetLatestJob(context.Context, *connect.Request[v1.GetLatestJobRequest]) (*connect.Response[v1.GetLatestJobResponse], error)
 }
 
 // NewVideoServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -248,6 +311,24 @@ func NewVideoServiceHandler(svc VideoServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(videoServiceMethods.ByName("ListReviewLog")),
 		connect.WithHandlerOptions(opts...),
 	)
+	videoServiceRunStepHandler := connect.NewUnaryHandler(
+		VideoServiceRunStepProcedure,
+		svc.RunStep,
+		connect.WithSchema(videoServiceMethods.ByName("RunStep")),
+		connect.WithHandlerOptions(opts...),
+	)
+	videoServiceGetJobHandler := connect.NewUnaryHandler(
+		VideoServiceGetJobProcedure,
+		svc.GetJob,
+		connect.WithSchema(videoServiceMethods.ByName("GetJob")),
+		connect.WithHandlerOptions(opts...),
+	)
+	videoServiceGetLatestJobHandler := connect.NewUnaryHandler(
+		VideoServiceGetLatestJobProcedure,
+		svc.GetLatestJob,
+		connect.WithSchema(videoServiceMethods.ByName("GetLatestJob")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/rewind.v1.VideoService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case VideoServiceAddVideoProcedure:
@@ -264,6 +345,12 @@ func NewVideoServiceHandler(svc VideoServiceHandler, opts ...connect.HandlerOpti
 			videoServiceRetryVideoHandler.ServeHTTP(w, r)
 		case VideoServiceListReviewLogProcedure:
 			videoServiceListReviewLogHandler.ServeHTTP(w, r)
+		case VideoServiceRunStepProcedure:
+			videoServiceRunStepHandler.ServeHTTP(w, r)
+		case VideoServiceGetJobProcedure:
+			videoServiceGetJobHandler.ServeHTTP(w, r)
+		case VideoServiceGetLatestJobProcedure:
+			videoServiceGetLatestJobHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -299,4 +386,16 @@ func (UnimplementedVideoServiceHandler) RetryVideo(context.Context, *connect.Req
 
 func (UnimplementedVideoServiceHandler) ListReviewLog(context.Context, *connect.Request[v1.ListReviewLogRequest]) (*connect.Response[v1.ListReviewLogResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("rewind.v1.VideoService.ListReviewLog is not implemented"))
+}
+
+func (UnimplementedVideoServiceHandler) RunStep(context.Context, *connect.Request[v1.RunStepRequest]) (*connect.Response[v1.RunStepResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("rewind.v1.VideoService.RunStep is not implemented"))
+}
+
+func (UnimplementedVideoServiceHandler) GetJob(context.Context, *connect.Request[v1.GetJobRequest]) (*connect.Response[v1.GetJobResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("rewind.v1.VideoService.GetJob is not implemented"))
+}
+
+func (UnimplementedVideoServiceHandler) GetLatestJob(context.Context, *connect.Request[v1.GetLatestJobRequest]) (*connect.Response[v1.GetLatestJobResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("rewind.v1.VideoService.GetLatestJob is not implemented"))
 }

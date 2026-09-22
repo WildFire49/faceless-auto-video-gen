@@ -22,6 +22,13 @@ func toConnectError(err error) *connect.Error {
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, domain.ErrNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
+	case errors.Is(err, domain.ErrAlreadyExists):
+		return connect.NewError(connect.CodeAlreadyExists, err)
+	case errors.Is(err, domain.ErrValidation):
+		// The caller supplied something unacceptable -- an empty note, a fact
+		// sheet not yet good enough to approve. Their problem to fix, so it
+		// must not be reported as a server error.
+		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, domain.ErrIllegalTransition):
 		// FailedPrecondition, not InvalidArgument: the request was well formed,
 		// the system is simply not in a state where it can be honoured. This is

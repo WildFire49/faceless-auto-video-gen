@@ -1,10 +1,9 @@
 // Command rewind-api serves the REWIND dashboard API.
 //
-// This file is the COMPOSITION ROOT (SPEC.md 14.1, rule 3): the only place in
-// the Go service allowed to name a concrete implementation. Everything below
-// it receives its dependencies through an interface. That is what makes the
-// whole tree testable, and it is why --fake-ai below is three lines rather
-// than a parallel code path.
+// A COMPOSITION ROOT (SPEC.md 14.1, rule 3). The object graph itself is built
+// by internal/platform/wiring, shared with the CLI, so the two cannot enforce
+// different rules. This file decides only two things: which AI engine to use,
+// and how to serve HTTP.
 package main
 
 import (
@@ -16,7 +15,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
@@ -26,14 +24,12 @@ import (
 	"github.com/WildFire49/faceless-auto-video-gen/api/gen/rewind/v1/rewindv1connect"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/adapter/aifake"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/adapter/aigrpc"
-	"github.com/WildFire49/faceless-auto-video-gen/api/internal/adapter/reviewmirror"
-	"github.com/WildFire49/faceless-auto-video-gen/api/internal/adapter/sqlite"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/domain"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/platform/buildinfo"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/platform/clock"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/platform/config"
-	"github.com/WildFire49/faceless-auto-video-gen/api/internal/platform/idgen"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/platform/logging"
+	"github.com/WildFire49/faceless-auto-video-gen/api/internal/platform/wiring"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/service"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/transport/connectrpc"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/transport/middleware"
@@ -77,22 +73,12 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
 	}
-
-	// ---- storage -----------------------------------------------------------
-	// Paths in config are relative to the repository root, the parent of
-	// config/, so the server works from any working directory.
-	repoRoot := filepath.Dir(dir)
-	db, err := sqlite.Open(context.Background(), filepath.Join(repoRoot, cfg.API.DBPath))
+	channel, err := config.LoadChannel(dir)
 	if err != nil {
-		return err
+		return fmt.Errorf("loading channel config: %w", err)
 	}
-	defer func() {
-		if err := db.Close(); err != nil {
-			log.Error("closing database", slog.Any("error", err))
-		}
-	}()
 
-	// ---- adapters (the only place concrete types are chosen) ---------------
+	// ---- the AI engine (the only choice this file makes) -------------------
 	var ai domain.AIEngine
 	if *fakeAI {
 		ai = aifake.NewHealthy()
@@ -102,6 +88,7 @@ func run() error {
 			Addr:            cfg.AI.GRPCAddr,
 			MaxMessageBytes: cfg.AI.MaxMessageBytes,
 			HealthTimeout:   cfg.Timeout("health", 5*time.Second),
+			ResearchTimeout: cfg.Timeout("research", 5*time.Minute),
 		})
 		if err != nil {
 			return fmt.Errorf("creating AI client: %w", err)
@@ -114,13 +101,24 @@ func run() error {
 		ai = engine
 	}
 
-	// ---- use cases ---------------------------------------------------------
-	videoRepo := sqlite.NewVideoRepo(db)
-	reviewLog := reviewmirror.New(sqlite.NewReviewLog(db), filepath.Join(repoRoot, cfg.Paths.Projects), log)
+	// ---- the application ---------------------------------------------------
+	app, err := wiring.Build(context.Background(), cfg, channel, dir, ai, log)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := app.Close(); err != nil {
+			log.Error("closing database", slog.Any("error", err))
+		}
+	}()
+
+	// A video left mid-step by a crash would sit there forever, because
+	// nothing is working on it any more (SPEC.md 13.3).
+	if err := app.Runner.RecoverInterrupted(context.Background()); err != nil {
+		return fmt.Errorf("recovering interrupted work: %w", err)
+	}
 
 	healthService := service.NewHealthService(ai, clock.New(), buildinfo.New())
-	videoService := service.NewVideoService(videoRepo, reviewLog, db, clock.New(), idgen.New())
-	gateService := service.NewGateService(videoRepo, reviewLog, db, clock.New())
 
 	// ---- transport ---------------------------------------------------------
 	mux := http.NewServeMux()
@@ -130,8 +128,12 @@ func run() error {
 	mux.Handle(healthPath, healthHandler)
 
 	videoPath, videoHandler := rewindv1connect.NewVideoServiceHandler(
-		connectrpc.NewVideoHandler(videoService, gateService))
+		connectrpc.NewVideoHandler(app.Videos, app.Gates))
 	mux.Handle(videoPath, videoHandler)
+
+	factsPath, factsHandler := rewindv1connect.NewFactsServiceHandler(
+		connectrpc.NewFactsHandler(app.Facts))
+	mux.Handle(factsPath, factsHandler)
 
 	// A plain liveness endpoint, so `curl` and container probes do not need to
 	// speak Connect to find out whether the process is up.
@@ -157,8 +159,7 @@ func run() error {
 
 	// ---- run until interrupted --------------------------------------------
 	// NotifyContext cancels ctx on Ctrl-C. One cancelled context unwinds every
-	// in-flight request cleanly, which is how a SIGINT mid-job avoids leaving
-	// a video stuck in a running state (SPEC.md 13.3).
+	// in-flight request cleanly (SPEC.md 13.3).
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -168,6 +169,7 @@ func run() error {
 			slog.String("addr", cfg.API.HTTPAddr),
 			slog.String("ai_addr", cfg.AI.GRPCAddr),
 			slog.Bool("fake_ai", *fakeAI),
+			slog.Any("pipeline_steps", app.Registry.Handled()),
 			slog.String("version", buildinfo.New().Version()),
 		)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {

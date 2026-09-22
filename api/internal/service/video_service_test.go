@@ -41,7 +41,7 @@ func newHarness(t *testing.T) *harness {
 
 	return &harness{
 		videos: service.NewVideoService(repo, log, db, clk, idgen.New()),
-		gates:  service.NewGateService(repo, log, db, clk),
+		gates:  service.NewGateService(repo, log, db, clk, nil),
 		repo:   repo,
 		log:    log,
 	}

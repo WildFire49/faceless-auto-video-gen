@@ -25,6 +25,7 @@ import (
 type Deps struct {
 	Videos *service.VideoService
 	Gates  *service.GateService
+	Facts  *service.FactsService
 	Out    io.Writer
 }
 
@@ -50,6 +51,7 @@ func NewRootCommand(deps Deps) *cobra.Command {
 		newApproveCommand(deps),
 		newRejectCommand(deps),
 		newLogCommand(deps),
+		newFactsCommand(deps),
 	)
 	return root
 }

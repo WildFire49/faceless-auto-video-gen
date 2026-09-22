@@ -6,6 +6,7 @@ import (
 
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/domain"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/platform/validate"
+	"github.com/WildFire49/faceless-auto-video-gen/api/internal/service/pipeline"
 )
 
 // VideoService is the use case layer for the queue.
@@ -19,6 +20,20 @@ type VideoService struct {
 	tx     domain.TxManager
 	clock  domain.Clock
 	ids    domain.IDGen
+
+	// jobs and runner are optional: the CLI wires them, and so does the
+	// server, but a test exercising only the queue need not.
+	jobs   domain.JobRepo
+	runner StepRunner
+}
+
+// StepRunner starts pipeline steps.
+//
+// An interface rather than the concrete *pipeline.Runner so tests can inject a
+// stub. It returns pipeline's own type rather than a parallel one here: two
+// identical structs that must be kept in sync is a cost with no benefit.
+type StepRunner interface {
+	Start(ctx context.Context, videoID string) (*pipeline.StartResult, error)
 }
 
 // NewVideoService wires the service. Constructor injection, no globals.
@@ -30,6 +45,51 @@ func NewVideoService(
 	ids domain.IDGen,
 ) *VideoService {
 	return &VideoService{videos: videos, log: log, tx: tx, clock: clock, ids: ids}
+}
+
+// WithPipeline attaches job tracking and a step runner.
+//
+// Separate from the constructor because the runner needs the video service's
+// repositories, which would otherwise be a construction cycle.
+func (s *VideoService) WithPipeline(jobs domain.JobRepo, runner StepRunner) *VideoService {
+	s.jobs = jobs
+	s.runner = runner
+	return s
+}
+
+// RunStep starts the next pipeline step for a video.
+func (s *VideoService) RunStep(ctx context.Context, videoID string) (*pipeline.StartResult, error) {
+	if err := validate.VideoID(videoID); err != nil {
+		return nil, err
+	}
+	if s.runner == nil {
+		return &pipeline.StartResult{Reason: "no pipeline is configured in this build"}, nil
+	}
+	return s.runner.Start(ctx, videoID)
+}
+
+// GetJob returns one job, or nil when it does not exist.
+func (s *VideoService) GetJob(ctx context.Context, jobID string) (*domain.Job, error) {
+	if s.jobs == nil {
+		return nil, nil //nolint:nilnil // no pipeline configured
+	}
+	job, err := s.jobs.Get(ctx, jobID)
+	if errorsIs(err, domain.ErrNotFound) {
+		return nil, nil //nolint:nilnil // absence is a normal answer here
+	}
+	return job, err
+}
+
+// GetLatestJob returns the most recent job for a video, or nil when it has
+// never run.
+func (s *VideoService) GetLatestJob(ctx context.Context, videoID string) (*domain.Job, error) {
+	if err := validate.VideoID(videoID); err != nil {
+		return nil, err
+	}
+	if s.jobs == nil {
+		return nil, nil //nolint:nilnil // no pipeline configured
+	}
+	return s.jobs.Latest(ctx, videoID)
 }
 
 // AddVideo queues a new topic.

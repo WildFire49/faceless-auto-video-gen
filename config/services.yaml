@@ -22,7 +22,11 @@ ai:
   # so a wedged model can never hang the pipeline forever.
   timeouts_seconds:
     health: 5
-    research: 300
+    # Research reads several full Wikipedia articles through a local model.
+    # Measured on an RTX 4060 with an 8B model: roughly 100 seconds PER
+    # ARTICLE, so three articles is ~5 minutes before any variance. 300s was
+    # the original guess and it is too tight -- it would cancel honest work.
+    research: 1200
     relevance: 120
     script: 180
     voice: 900

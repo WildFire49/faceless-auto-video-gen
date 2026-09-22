@@ -19,6 +19,34 @@ else:
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
+class _JobState:
+    ValueType = _typing.NewType("ValueType", _builtins.int)
+    V: _TypeAlias = ValueType  # noqa: Y015
+
+class _JobStateEnumTypeWrapper(_enum_type_wrapper._EnumTypeWrapper[_JobState.ValueType], _builtins.type):
+    DESCRIPTOR: _descriptor.EnumDescriptor
+    JOB_STATE_UNSPECIFIED: _JobState.ValueType  # 0
+    JOB_STATE_RUNNING: _JobState.ValueType  # 1
+    JOB_STATE_SUCCEEDED: _JobState.ValueType  # 2
+    JOB_STATE_FAILED: _JobState.ValueType  # 3
+    JOB_STATE_INTERRUPTED: _JobState.ValueType  # 4
+    """The process died while this job was running. Detected at startup
+    (SPEC.md 13.3, crash recovery).
+    """
+
+class JobState(_JobState, metaclass=_JobStateEnumTypeWrapper):
+    """JobState is the lifecycle of one pipeline step execution."""
+
+JOB_STATE_UNSPECIFIED: JobState.ValueType  # 0
+JOB_STATE_RUNNING: JobState.ValueType  # 1
+JOB_STATE_SUCCEEDED: JobState.ValueType  # 2
+JOB_STATE_FAILED: JobState.ValueType  # 3
+JOB_STATE_INTERRUPTED: JobState.ValueType  # 4
+"""The process died while this job was running. Detected at startup
+(SPEC.md 13.3, crash recovery).
+"""
+Global___JobState: _TypeAlias = JobState  # noqa: Y015
+
 class _VideoStatus:
     ValueType = _typing.NewType("ValueType", _builtins.int)
     V: _TypeAlias = ValueType  # noqa: Y015
@@ -128,6 +156,193 @@ GATE_D_VOICE: Gate.ValueType  # 4
 GATE_E_STORYBOARD: Gate.ValueType  # 5
 GATE_F_FINAL: Gate.ValueType  # 6
 Global___Gate: _TypeAlias = Gate  # noqa: Y015
+
+@_typing.final
+class Job(_message.Message):
+    DESCRIPTOR: _descriptor.Descriptor
+
+    ID_FIELD_NUMBER: _builtins.int
+    VIDEO_ID_FIELD_NUMBER: _builtins.int
+    STEP_FIELD_NUMBER: _builtins.int
+    STATE_FIELD_NUMBER: _builtins.int
+    STAGE_FIELD_NUMBER: _builtins.int
+    PERCENT_FIELD_NUMBER: _builtins.int
+    CURRENT_FIELD_NUMBER: _builtins.int
+    TOTAL_FIELD_NUMBER: _builtins.int
+    ERROR_FIELD_NUMBER: _builtins.int
+    STARTED_AT_FIELD_NUMBER: _builtins.int
+    FINISHED_AT_FIELD_NUMBER: _builtins.int
+    id: _builtins.str
+    video_id: _builtins.str
+    step: _builtins.str
+    """Which step, e.g. "researching"."""
+    state: Global___JobState.ValueType
+    stage: _builtins.str
+    """Latest progress reported by the worker.
+    "fetching wikipedia"
+    """
+    percent: _builtins.float
+    """0..1"""
+    current: _builtins.int
+    total: _builtins.int
+    error: _builtins.str
+    started_at: _builtins.str
+    """RFC 3339"""
+    finished_at: _builtins.str
+    def __init__(
+        self,
+        *,
+        id: _builtins.str = ...,
+        video_id: _builtins.str = ...,
+        step: _builtins.str = ...,
+        state: Global___JobState.ValueType = ...,
+        stage: _builtins.str = ...,
+        percent: _builtins.float = ...,
+        current: _builtins.int = ...,
+        total: _builtins.int = ...,
+        error: _builtins.str = ...,
+        started_at: _builtins.str = ...,
+        finished_at: _builtins.str = ...,
+    ) -> None: ...
+    _HasFieldArgType: _TypeAlias = _Never  # noqa: Y015
+    def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["current", b"current", "error", b"error", "finished_at", b"finished_at", "id", b"id", "percent", b"percent", "stage", b"stage", "started_at", b"started_at", "state", b"state", "step", b"step", "total", b"total", "video_id", b"video_id"]  # noqa: Y015
+    def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
+    def WhichOneof(self, oneof_group: _Never) -> None: ...
+
+Global___Job: _TypeAlias = Job  # noqa: Y015
+
+@_typing.final
+class RunStepRequest(_message.Message):
+    DESCRIPTOR: _descriptor.Descriptor
+
+    VIDEO_ID_FIELD_NUMBER: _builtins.int
+    video_id: _builtins.str
+    def __init__(
+        self,
+        *,
+        video_id: _builtins.str = ...,
+    ) -> None: ...
+    _HasFieldArgType: _TypeAlias = _Never  # noqa: Y015
+    def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["video_id", b"video_id"]  # noqa: Y015
+    def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
+    def WhichOneof(self, oneof_group: _Never) -> None: ...
+
+Global___RunStepRequest: _TypeAlias = RunStepRequest  # noqa: Y015
+
+@_typing.final
+class RunStepResponse(_message.Message):
+    DESCRIPTOR: _descriptor.Descriptor
+
+    JOB_FIELD_NUMBER: _builtins.int
+    STARTED_FIELD_NUMBER: _builtins.int
+    REASON_FIELD_NUMBER: _builtins.int
+    started: _builtins.bool
+    reason: _builtins.str
+    """e.g. "waiting for your review at Gate A"."""
+    @_builtins.property
+    def job(self) -> Global___Job:
+        """Empty when there was nothing to do; `reason` says why."""
+
+    def __init__(
+        self,
+        *,
+        job: Global___Job | None = ...,
+        started: _builtins.bool = ...,
+        reason: _builtins.str = ...,
+    ) -> None: ...
+    _HasFieldArgType: _TypeAlias = _typing.Literal["job", b"job"]  # noqa: Y015
+    def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["job", b"job", "reason", b"reason", "started", b"started"]  # noqa: Y015
+    def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
+    def WhichOneof(self, oneof_group: _Never) -> None: ...
+
+Global___RunStepResponse: _TypeAlias = RunStepResponse  # noqa: Y015
+
+@_typing.final
+class GetJobRequest(_message.Message):
+    DESCRIPTOR: _descriptor.Descriptor
+
+    JOB_ID_FIELD_NUMBER: _builtins.int
+    job_id: _builtins.str
+    def __init__(
+        self,
+        *,
+        job_id: _builtins.str = ...,
+    ) -> None: ...
+    _HasFieldArgType: _TypeAlias = _Never  # noqa: Y015
+    def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["job_id", b"job_id"]  # noqa: Y015
+    def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
+    def WhichOneof(self, oneof_group: _Never) -> None: ...
+
+Global___GetJobRequest: _TypeAlias = GetJobRequest  # noqa: Y015
+
+@_typing.final
+class GetJobResponse(_message.Message):
+    DESCRIPTOR: _descriptor.Descriptor
+
+    EXISTS_FIELD_NUMBER: _builtins.int
+    JOB_FIELD_NUMBER: _builtins.int
+    exists: _builtins.bool
+    @_builtins.property
+    def job(self) -> Global___Job: ...
+    def __init__(
+        self,
+        *,
+        exists: _builtins.bool = ...,
+        job: Global___Job | None = ...,
+    ) -> None: ...
+    _HasFieldArgType: _TypeAlias = _typing.Literal["job", b"job"]  # noqa: Y015
+    def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["exists", b"exists", "job", b"job"]  # noqa: Y015
+    def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
+    def WhichOneof(self, oneof_group: _Never) -> None: ...
+
+Global___GetJobResponse: _TypeAlias = GetJobResponse  # noqa: Y015
+
+@_typing.final
+class GetLatestJobRequest(_message.Message):
+    DESCRIPTOR: _descriptor.Descriptor
+
+    VIDEO_ID_FIELD_NUMBER: _builtins.int
+    video_id: _builtins.str
+    def __init__(
+        self,
+        *,
+        video_id: _builtins.str = ...,
+    ) -> None: ...
+    _HasFieldArgType: _TypeAlias = _Never  # noqa: Y015
+    def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["video_id", b"video_id"]  # noqa: Y015
+    def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
+    def WhichOneof(self, oneof_group: _Never) -> None: ...
+
+Global___GetLatestJobRequest: _TypeAlias = GetLatestJobRequest  # noqa: Y015
+
+@_typing.final
+class GetLatestJobResponse(_message.Message):
+    DESCRIPTOR: _descriptor.Descriptor
+
+    EXISTS_FIELD_NUMBER: _builtins.int
+    JOB_FIELD_NUMBER: _builtins.int
+    exists: _builtins.bool
+    @_builtins.property
+    def job(self) -> Global___Job: ...
+    def __init__(
+        self,
+        *,
+        exists: _builtins.bool = ...,
+        job: Global___Job | None = ...,
+    ) -> None: ...
+    _HasFieldArgType: _TypeAlias = _typing.Literal["job", b"job"]  # noqa: Y015
+    def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["exists", b"exists", "job", b"job"]  # noqa: Y015
+    def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
+    def WhichOneof(self, oneof_group: _Never) -> None: ...
+
+Global___GetLatestJobResponse: _TypeAlias = GetLatestJobResponse  # noqa: Y015
 
 @_typing.final
 class Video(_message.Message):

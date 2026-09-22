@@ -1,5 +1,23 @@
 # CLAUDE.md — Rules for building REWIND
 
+## Testing philosophy (read this first)
+
+**Highly prefer E2E tests as the sole testing mechanism.** Use them to verify complex
+features work. At the end of E2E tests, produce a verifiable and repeatable artifact.
+
+- If you must test a system in isolation, FIRST write all the ways it could fail,
+  THEN write the code.
+
+What this means in practice here:
+- `task e2e` is the real proof a milestone works. It drives the actual three-service
+  stack over HTTP, exactly as a human would, and writes an artifact to `artifacts/e2e/`
+  that can be read, diffed and re-run.
+- A milestone is not "done" because unit tests pass. It is done when the E2E run
+  produces an artifact showing the feature working end to end.
+- Isolated tests are for components where the failure modes are the point — the
+  evidence verifier is the example: its test file is organised as a list of ways it
+  could let a falsified fact through, written before the matching code.
+
 You are building the project described in `SPEC.md`. Read it fully before any work.
 
 ## How we work
@@ -102,8 +120,32 @@ interface it implements.
   in page or component code. Every animation respects `prefers-reduced-motion`.
 
 ## Current milestone
-M1 — State & gates: **COMPLETE**, awaiting review. Do not start M2 without an explicit
-"approved, start M2" from the user.
+M2 — Research & Gate A: **COMPLETE**, awaiting review. Do not start M3 without an explicit
+"approved, start M3" from the user.
+
+### Invariant M2 established — do not weaken it
+**The LLM is never the source of a fact.** `ai/rewind_ai/research/verifier.py` checks every
+extracted sentence against the fetched source TWO ways, and both are load-bearing:
+
+1. fuzzy prose match, so honest copies survive typographic drift
+2. **exact number match**, because a falsified date scores 0.99 on prose similarity —
+   changing "7000" to "3000" alters four characters in a hundred and eighty, and no prose
+   threshold catches it
+
+If you ever relax the number check, a falsified date reaches a human. Every later module
+consumes these facts, so this is the foundation everything else stands on.
+
+### Things the E2E run caught that unit tests did not
+Kept here because each was invisible to isolated tests and would recur:
+- a step must declare `From → Running → To`; a step that only knows its output status
+  leaves freshly queued videos untouched
+- `ErrValidation` must map to HTTP 400, not 500 — a user-fixable condition is not a
+  server error
+- a dependency failure (model not pulled) must propagate, not be swallowed per-chunk and
+  reported as "0 facts survived verification"
+- a streaming handler must yield progress AS IT ARRIVES, from a worker thread; collecting
+  events and yielding them after the work finishes looks identical and gives a dead
+  progress bar for the whole run
 
 ### Invariant M1 established — do not weaken it
 Gate-crossing transitions live in a SEPARATE table from automatic ones

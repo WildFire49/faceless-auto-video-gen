@@ -28,6 +28,15 @@ type Engine struct {
 	// DeepCalls records the `deep` argument of every CheckHealth call, so a
 	// test can assert the flag was forwarded rather than dropped.
 	DeepCalls []bool
+
+	// ResearchResult, when set, is returned by BuildFactSheet.
+	ResearchResult *domain.FactSheetResult
+	// ResearchErr, when set, makes BuildFactSheet fail -- for exercising the
+	// runner's error path without breaking anything real.
+	ResearchErr error
+	// ResearchCalls records every research request, so a test can assert the
+	// topic and extra URLs were forwarded.
+	ResearchCalls []domain.FactSheetRequest
 }
 
 // NewHealthy returns a fake worker that reports itself fully operational.

@@ -27,6 +27,44 @@ type AIEngine interface {
 	// non-nil error when the connection simply fails. An error is reserved for
 	// the caller's own mistakes, such as a cancelled context.
 	CheckHealth(ctx context.Context, deep bool) (ComponentHealth, error)
+
+	// BuildFactSheet researches a topic and writes facts.json into the
+	// video's project folder.
+	//
+	// The worker streams progress while it works; `report` is called for each
+	// event. A research failure is returned as an error -- unlike a health
+	// check, a step that cannot do its job IS a failure, and Go turns it into
+	// status=error with a resume point.
+	BuildFactSheet(ctx context.Context, req FactSheetRequest, report func(Progress)) (*FactSheetResult, error)
+}
+
+// Progress is one update from a long-running worker call.
+type Progress struct {
+	Stage   string
+	Percent float64
+	Current int
+	Total   int
+}
+
+// FactSheetRequest is what the worker needs to research a topic.
+type FactSheetRequest struct {
+	VideoID   string
+	Topic     string
+	ExtraURLs []string
+	MinFacts  int
+}
+
+// FactSheetResult summarises what research produced.
+//
+// It carries counts and a path, not the facts themselves: the fact sheet is a
+// file in the project folder, and passing it through gRPC as well would mean
+// two copies that can disagree (SPEC.md 2.5, "paths, not bytes").
+type FactSheetResult struct {
+	Topic               string
+	FactCount           int
+	FactsJSONPath       string
+	CandidatesExtracted int
+	CandidatesRejected  int
 }
 
 // Clock exists so time-dependent behaviour is testable without sleeping.

@@ -1,0 +1,348 @@
+"""Tests for the research pipeline.
+
+Offline and deterministic (SPEC.md 10): a fake fetcher supplies saved source
+text and a fake LLM returns scripted extractions, so these run with no
+network, no Ollama and no GPU.
+
+The fake LLM is where the interesting cases live -- it can be told to return a
+fabricated fact, or one with a doctored date, and the test asserts the
+verifier throws it away before it reaches a human.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+from rewind_ai.core.errors import ValidationFailedError
+from rewind_ai.research.base import Document
+from rewind_ai.research.service import ResearchConfig, ResearchService
+from rewind_ai.research.verifier import normalise
+
+# ------------------------------------------------------------------ fixtures
+
+SANDALS_SOURCE = """
+Sandals are an open type of footwear.
+
+The oldest known footwear in the world are sandals woven from sagebrush bark,
+dated to approximately 7000 or 8000 BC, found at the Fort Rock Cave in Oregon.
+
+Roman soldiers wore caligae, heavy-soled hobnailed military sandals, which were
+standard issue throughout the Republic and early Empire.
+
+In the 12th century, the Japanese wore zori, flat sandals made of rice straw.
+
+By 1962, the flip-flop had become popular in the United States.
+
+During the 1960s counterculture movement, sandals became a symbol of a simple
+lifestyle.
+
+The Birkenstock footbed was patented in 1902 by Konrad Birkenstock.
+
+In 1774, Johann Adam Birkenstock was registered as a shoemaker in church
+archives in Germany.
+
+Espadrilles, with soles of jute rope, have been worn in the Pyrenees since at
+least the 13th century.
+
+In 1985, sports sandals were designed for river guides in the Grand Canyon.
+"""
+
+SOURCE_URL = "https://en.wikipedia.org/wiki/Sandal"
+
+
+class FakeFetcher:
+    """Returns saved source text. Stands in for Wikipedia."""
+
+    name = "fake"
+
+    def __init__(self, documents: list[Document]) -> None:
+        self._documents = documents
+
+    def fetch(self, topic: str, *, extra_urls: list[str]) -> list[Document]:
+        del topic, extra_urls
+        return list(self._documents)
+
+
+class FakeLLM:
+    """Returns scripted extractions, one batch per call."""
+
+    def __init__(self, batches: list[list[dict[str, Any]]]) -> None:
+        self._batches = batches
+        self.calls = 0
+
+    def complete_json(self, *, system: str, prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
+        del system, prompt, schema
+        index = min(self.calls, len(self._batches) - 1)
+        self.calls += 1
+        return {"events": self._batches[index]}
+
+
+def event(year_label: str, sort_year: int, claim: str, evidence: str) -> dict[str, Any]:
+    return {
+        "year_label": year_label,
+        "sort_year": sort_year,
+        "place": "",
+        "claim": claim,
+        "evidence": evidence,
+    }
+
+
+#: Nine honest extractions, each quoting the source verbatim.
+HONEST_EVENTS = [
+    event(
+        "~7000 BC",
+        -7000,
+        "Oldest known footwear found in Oregon.",
+        "The oldest known footwear in the world are sandals woven from sagebrush bark, "
+        "dated to approximately 7000 or 8000 BC, found at the Fort Rock Cave in Oregon.",
+    ),
+    event(
+        "Roman Republic",
+        -200,
+        "Roman soldiers wore hobnailed sandals.",
+        "Roman soldiers wore caligae, heavy-soled hobnailed military sandals, which were "
+        "standard issue throughout the Republic and early Empire.",
+    ),
+    event(
+        "12th century",
+        1100,
+        "Japanese zori were made of rice straw.",
+        "In the 12th century, the Japanese wore zori, flat sandals made of rice straw.",
+    ),
+    event(
+        "13th century",
+        1200,
+        "Espadrilles worn in the Pyrenees.",
+        "Espadrilles, with soles of jute rope, have been worn in the Pyrenees since at "
+        "least the 13th century.",
+    ),
+    event(
+        "1774",
+        1774,
+        "A Birkenstock registered as a shoemaker.",
+        "In 1774, Johann Adam Birkenstock was registered as a shoemaker in church "
+        "archives in Germany.",
+    ),
+    event(
+        "1902",
+        1902,
+        "The Birkenstock footbed was patented.",
+        "The Birkenstock footbed was patented in 1902 by Konrad Birkenstock.",
+    ),
+    event(
+        "1962",
+        1962,
+        "Flip-flops became popular in America.",
+        "By 1962, the flip-flop had become popular in the United States.",
+    ),
+    event(
+        "1960s",
+        1965,
+        "Sandals became a counterculture symbol.",
+        "During the 1960s counterculture movement, sandals became a symbol of a simple lifestyle.",
+    ),
+    event(
+        "1985",
+        1985,
+        "Sports sandals designed for river guides.",
+        "In 1985, sports sandals were designed for river guides in the Grand Canyon.",
+    ),
+]
+
+
+@pytest.fixture
+def documents() -> list[Document]:
+    return [Document(url=SOURCE_URL, title="Sandal", text=SANDALS_SOURCE, fetcher="fake")]
+
+
+def build_service(
+    tmp_path: Path,
+    documents: list[Document],
+    batches: list[list[dict[str, Any]]],
+    *,
+    min_facts: int = 8,
+) -> tuple[ResearchService, FakeLLM]:
+    llm = FakeLLM(batches)
+    service = ResearchService(
+        fetchers=[FakeFetcher(documents)],
+        llm=llm,
+        config=ResearchConfig(min_facts=min_facts, evidence_match_threshold=0.90),
+        projects_dir=tmp_path,
+    )
+    return service, llm
+
+
+# ------------------------------------------------------------- the happy path
+
+
+def test_builds_a_verified_fact_sheet(tmp_path: Path, documents: list[Document]) -> None:
+    service, _ = build_service(tmp_path, documents, [HONEST_EVENTS])
+
+    result = service.build(video_id="sandals", topic="sandals", extra_urls=[])
+
+    assert len(result.facts) >= 8
+    assert result.candidates_rejected == 0
+
+    # Facts are numbered and chronological.
+    assert [f.id for f in result.facts] == [f"f{i}" for i in range(1, len(result.facts) + 1)]
+    years = [f.sort_year for f in result.facts]
+    assert years == sorted(years)
+
+    # SPEC.md 5.2 acceptance: no fact without a source, and every evidence
+    # string really is in that source.
+    #
+    # Compared after normalisation, because the source wraps sentences across
+    # lines -- the same reason the verifier normalises rather than demanding
+    # byte equality.
+    normalised_source = normalise(SANDALS_SOURCE)
+    for fact in result.facts:
+        assert fact.source_url, f"fact {fact.id} has no source"
+        assert normalise(fact.evidence) in normalised_source, (
+            f"fact {fact.id} evidence is not in the source"
+        )
+
+
+def test_writes_facts_json(tmp_path: Path, documents: list[Document]) -> None:
+    service, _ = build_service(tmp_path, documents, [HONEST_EVENTS])
+    result = service.build(video_id="sandals", topic="sandals", extra_urls=[])
+
+    path = Path(result.facts_json_path)
+    assert path.exists()
+    assert path.parent.name == "sandals"
+
+    data = json.loads(path.read_text(encoding="utf-8"))
+    assert data["topic"] == "sandals"
+    assert len(data["facts"]) == len(result.facts)
+    assert data["sources"][0]["url"] == SOURCE_URL
+
+    first = data["facts"][0]
+    assert first["approved"] is False, "the worker must never pre-approve a fact"
+    assert first["evidence"]
+    assert first["source_url"]
+
+
+# -------------------------------------------------- the verifier does its job
+
+
+def test_fabricated_facts_are_dropped(tmp_path: Path, documents: list[Document]) -> None:
+    fabricated = event(
+        "3500 BC",
+        -3500,
+        "Oldest leather sandals found in Armenia.",
+        "Archaeologists discovered the oldest leather shoes in Armenia, dated to 3500 BC, "
+        "preserved under a layer of sheep dung.",
+    )
+    service, _ = build_service(tmp_path, documents, [[*HONEST_EVENTS, fabricated]])
+
+    result = service.build(video_id="sandals", topic="sandals", extra_urls=[])
+
+    assert result.candidates_rejected == 1
+    assert all("Armenia" not in f.claim for f in result.facts)
+    assert any("3500 BC" in r for r in result.rejections)
+
+
+def test_facts_with_doctored_dates_are_dropped(tmp_path: Path, documents: list[Document]) -> None:
+    """The subtlest attack: quote a real sentence but change the year.
+
+    Prose similarity is ~0.99, so only the verifier's exact number check
+    catches it. If this test ever fails, a falsified date can reach a human.
+    """
+    doctored = event(
+        "~3000 BC",
+        -3000,
+        "Oldest known footwear found in Oregon.",
+        "The oldest known footwear in the world are sandals woven from sagebrush bark, "
+        "dated to approximately 3000 or 4000 BC, found at the Fort Rock Cave in Oregon.",
+    )
+    service, _ = build_service(tmp_path, documents, [[*HONEST_EVENTS, doctored]])
+
+    result = service.build(video_id="sandals", topic="sandals", extra_urls=[])
+
+    assert result.candidates_rejected == 1
+    assert all(f.sort_year != -3000 for f in result.facts), (
+        "a fact with a falsified date survived verification"
+    )
+
+
+def test_too_few_verified_facts_fails_loudly(tmp_path: Path, documents: list[Document]) -> None:
+    # Handing a reviewer three facts would waste their time and tempt them to
+    # approve thin material, so it fails instead.
+    service, _ = build_service(tmp_path, documents, [HONEST_EVENTS[:3]])
+
+    with pytest.raises(ValidationFailedError) as excinfo:
+        service.build(video_id="sandals", topic="sandals", extra_urls=[])
+
+    assert "need 8" in str(excinfo.value)
+
+
+def test_no_sources_fails_loudly(tmp_path: Path) -> None:
+    service, _ = build_service(tmp_path, [], [HONEST_EVENTS])
+
+    with pytest.raises(ValidationFailedError) as excinfo:
+        service.build(video_id="sandals", topic="sandals", extra_urls=[])
+
+    assert "no sources" in str(excinfo.value)
+
+
+# ------------------------------------------------------------------- tidying
+
+
+def test_duplicate_facts_are_merged(tmp_path: Path, documents: list[Document]) -> None:
+    # The same milestone described by two articles should appear once.
+    duplicate = event(
+        "~7000 BC",
+        -7000,
+        "Oldest known footwear found in Oregon cave.",
+        "The oldest known footwear in the world are sandals woven from sagebrush bark, "
+        "dated to approximately 7000 or 8000 BC, found at the Fort Rock Cave in Oregon.",
+    )
+    service, _ = build_service(tmp_path, documents, [[*HONEST_EVENTS, duplicate]])
+
+    result = service.build(video_id="sandals", topic="sandals", extra_urls=[])
+
+    oldest = [f for f in result.facts if f.sort_year == -7000]
+    assert len(oldest) == 1, f"expected one fact for 7000 BC, got {len(oldest)}"
+
+
+def test_progress_is_reported(tmp_path: Path, documents: list[Document]) -> None:
+    service, _ = build_service(tmp_path, documents, [HONEST_EVENTS])
+
+    seen: list[tuple[str, float]] = []
+    service.build(
+        video_id="sandals",
+        topic="sandals",
+        extra_urls=[],
+        progress=lambda stage, pct: seen.append((stage, pct)),
+    )
+
+    assert seen, "no progress was reported; the dashboard would show a dead bar"
+    stages = [s for s, _ in seen]
+    assert any("fetch" in s for s in stages)
+    assert any("verif" in s for s in stages)
+
+    percents = [p for _, p in seen]
+    assert percents == sorted(percents), "progress went backwards"
+    assert all(0.0 <= p <= 1.0 for p in percents)
+
+
+def test_a_failing_source_does_not_sink_the_run(tmp_path: Path, documents: list[Document]) -> None:
+    class BrokenFetcher:
+        name = "broken"
+
+        def fetch(self, topic: str, *, extra_urls: list[str]) -> list[Document]:
+            raise RuntimeError("DNS exploded")
+
+    llm = FakeLLM([HONEST_EVENTS])
+    service = ResearchService(
+        fetchers=[BrokenFetcher(), FakeFetcher(documents)],
+        llm=llm,
+        config=ResearchConfig(min_facts=8, evidence_match_threshold=0.90),
+        projects_dir=tmp_path,
+    )
+
+    result = service.build(video_id="sandals", topic="sandals", extra_urls=[])
+    assert len(result.facts) >= 8

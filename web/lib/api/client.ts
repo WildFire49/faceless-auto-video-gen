@@ -14,6 +14,7 @@ import { createClient, type Client } from '@connectrpc/connect';
 import { createConnectTransport } from '@connectrpc/connect-web';
 
 import { RewindService } from '@/lib/gen/rewind/v1/api_pb';
+import { FactsService } from '@/lib/gen/rewind/v1/facts_pb';
 import { VideoService } from '@/lib/gen/rewind/v1/video_pb';
 
 /**
@@ -38,5 +39,8 @@ export const rewindClient: Client<typeof RewindService> = createClient(RewindSer
 
 /** The queue and the six review gates. */
 export const videoClient: Client<typeof VideoService> = createClient(VideoService, transport);
+
+/** Gate A: the researched fact sheet. */
+export const factsClient: Client<typeof FactsService> = createClient(FactsService, transport);
 
 export { baseUrl as apiBaseUrl };

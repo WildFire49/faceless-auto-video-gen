@@ -76,6 +76,21 @@ class VideoServiceStub:
                 request_serializer=rewind_dot_v1_dot_video__pb2.ListReviewLogRequest.SerializeToString,
                 response_deserializer=rewind_dot_v1_dot_video__pb2.ListReviewLogResponse.FromString,
                 _registered_method=True)
+        self.RunStep = channel.unary_unary(
+                '/rewind.v1.VideoService/RunStep',
+                request_serializer=rewind_dot_v1_dot_video__pb2.RunStepRequest.SerializeToString,
+                response_deserializer=rewind_dot_v1_dot_video__pb2.RunStepResponse.FromString,
+                _registered_method=True)
+        self.GetJob = channel.unary_unary(
+                '/rewind.v1.VideoService/GetJob',
+                request_serializer=rewind_dot_v1_dot_video__pb2.GetJobRequest.SerializeToString,
+                response_deserializer=rewind_dot_v1_dot_video__pb2.GetJobResponse.FromString,
+                _registered_method=True)
+        self.GetLatestJob = channel.unary_unary(
+                '/rewind.v1.VideoService/GetLatestJob',
+                request_serializer=rewind_dot_v1_dot_video__pb2.GetLatestJobRequest.SerializeToString,
+                response_deserializer=rewind_dot_v1_dot_video__pb2.GetLatestJobResponse.FromString,
+                _registered_method=True)
 
 
 class VideoServiceServicer:
@@ -142,6 +157,31 @@ class VideoServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def RunStep(self, request, context):
+        """RunStep starts the next pipeline step and returns IMMEDIATELY with a job
+        id. Research takes minutes, so the request must never block on it
+        (SPEC.md 8.3).
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetJob(self, request, context):
+        """GetJob reports a running job's progress. The dashboard polls this to draw
+        its progress bar.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetLatestJob(self, request, context):
+        """GetLatestJob returns the most recent job for a video, so a page reload
+        reattaches to work that is already running.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_VideoServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -179,6 +219,21 @@ def add_VideoServiceServicer_to_server(servicer, server):
                     servicer.ListReviewLog,
                     request_deserializer=rewind_dot_v1_dot_video__pb2.ListReviewLogRequest.FromString,
                     response_serializer=rewind_dot_v1_dot_video__pb2.ListReviewLogResponse.SerializeToString,
+            ),
+            'RunStep': grpc.unary_unary_rpc_method_handler(
+                    servicer.RunStep,
+                    request_deserializer=rewind_dot_v1_dot_video__pb2.RunStepRequest.FromString,
+                    response_serializer=rewind_dot_v1_dot_video__pb2.RunStepResponse.SerializeToString,
+            ),
+            'GetJob': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetJob,
+                    request_deserializer=rewind_dot_v1_dot_video__pb2.GetJobRequest.FromString,
+                    response_serializer=rewind_dot_v1_dot_video__pb2.GetJobResponse.SerializeToString,
+            ),
+            'GetLatestJob': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetLatestJob,
+                    request_deserializer=rewind_dot_v1_dot_video__pb2.GetLatestJobRequest.FromString,
+                    response_serializer=rewind_dot_v1_dot_video__pb2.GetLatestJobResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -377,6 +432,87 @@ class VideoService:
             '/rewind.v1.VideoService/ListReviewLog',
             rewind_dot_v1_dot_video__pb2.ListReviewLogRequest.SerializeToString,
             rewind_dot_v1_dot_video__pb2.ListReviewLogResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def RunStep(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/rewind.v1.VideoService/RunStep',
+            rewind_dot_v1_dot_video__pb2.RunStepRequest.SerializeToString,
+            rewind_dot_v1_dot_video__pb2.RunStepResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetJob(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/rewind.v1.VideoService/GetJob',
+            rewind_dot_v1_dot_video__pb2.GetJobRequest.SerializeToString,
+            rewind_dot_v1_dot_video__pb2.GetJobResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetLatestJob(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/rewind.v1.VideoService/GetLatestJob',
+            rewind_dot_v1_dot_video__pb2.GetLatestJobRequest.SerializeToString,
+            rewind_dot_v1_dot_video__pb2.GetLatestJobResponse.FromString,
             options,
             channel_credentials,
             insecure,

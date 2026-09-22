@@ -21,7 +21,7 @@ from types import FrameType
 
 import grpc
 
-from rewind.v1 import health_pb2_grpc
+from rewind.v1 import health_pb2_grpc, research_pb2_grpc
 from rewind_ai.core import config, container
 from rewind_ai.core.logging import configure, get_logger
 
@@ -35,13 +35,13 @@ MAX_WORKERS = 8
 SHUTDOWN_GRACE_SECONDS = 20.0
 
 
-def build_server(settings: config.Settings, *, llm_model: str = "") -> tuple[grpc.Server, str]:
+def build_server(settings: config.Settings) -> tuple[grpc.Server, str]:
     """Construct the gRPC server. Returns the server and the bound address.
 
     Separated from ``main`` so tests can build a real server on an ephemeral
     port without going through argument parsing.
     """
-    deps = container.build(settings, llm_model=llm_model)
+    deps = container.build(settings)
 
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=MAX_WORKERS),
@@ -55,8 +55,10 @@ def build_server(settings: config.Settings, *, llm_model: str = "") -> tuple[grp
     # stubs, and keeping that off the import path until the server is actually
     # being built keeps `python -c "import rewind_ai"` fast and side-effect free.
     from rewind_ai.handlers.health import HealthHandler
+    from rewind_ai.handlers.research import ResearchHandler
 
     health_pb2_grpc.add_HealthServiceServicer_to_server(HealthHandler(deps.health), server)
+    research_pb2_grpc.add_ResearchServiceServicer_to_server(ResearchHandler(deps.research), server)
 
     # Insecure is correct ONLY because this binds loopback and the Go API is on
     # the same machine (SPEC.md 13.5). If either end ever moves off this box,
@@ -75,18 +77,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--config", type=Path, default=None, help="path to config/")
     parser.add_argument("--log-level", default="INFO")
     parser.add_argument("--json-logs", action="store_true", help="emit JSON instead of text")
-    parser.add_argument(
-        "--llm-model",
-        default="",
-        help="model the health probe should verify is pulled, e.g. qwen2.5:14b",
-    )
     args = parser.parse_args(argv)
 
     configure(level=args.log_level, json_output=args.json_logs)
 
     try:
         settings = config.load(args.config)
-        server, address = build_server(settings, llm_model=args.llm_model)
+        server, address = build_server(settings)
     except config.ConfigError as exc:
         # A misconfigured worker refuses to start rather than failing later,
         # halfway through a render, where the cause is much harder to see.

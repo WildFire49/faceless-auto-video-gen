@@ -150,7 +150,7 @@ tasks:
 
   # ------------------------------------------------------------------ test --
   test:
-    desc: Run every test suite
+    desc: Run every test suite (isolated tests; `task e2e` is the real proof)
     cmds:
       - task: test:go
       - task: test:python
@@ -179,6 +179,22 @@ tasks:
     dir: web
     cmds:
       - npm run typecheck
+
+  # ------------------------------------------------------------------- e2e --
+  e2e:
+    desc: "End-to-end run against the live stack; writes artifacts/e2e/<run>/"
+    summary: |
+      The primary proof that a milestone works (CLAUDE.md, testing philosophy).
+
+      Needs all three services running -- start them with `task dev` in another
+      terminal first. Writes a readable report plus the full request/response
+      transcript to artifacts/e2e/.
+
+        task e2e
+        task e2e -- --topic sandals
+        task e2e -- --skip-reverify      # no second network round trip
+    cmds:
+      - "{{.PY}} e2e/run.py {{.CLI_ARGS}}"
 
   # ----------------------------------------------------------------- check --
   check:

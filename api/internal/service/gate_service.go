@@ -19,7 +19,19 @@ type GateService struct {
 	log    domain.ReviewLog
 	tx     domain.TxManager
 	clock  domain.Clock
+
+	// preconditions holds, per gate, a check that must pass before approval.
+	//
+	// The state machine guarantees a video is AT the right gate; these say
+	// whether its content is good enough to pass. Gate A needs enough facts
+	// spanning enough eras (SPEC.md 5.2); later gates will add their own, and
+	// each is one map entry wired in the composition root -- no edits here.
+	preconditions map[domain.Gate]GatePrecondition
 }
+
+// GatePrecondition reports whether a gate is ready to approve. Returning an
+// error blocks the approval and the message is shown to the operator.
+type GatePrecondition func(ctx context.Context, videoID string) error
 
 // NewGateService wires the service.
 func NewGateService(
@@ -27,12 +39,32 @@ func NewGateService(
 	log domain.ReviewLog,
 	tx domain.TxManager,
 	clock domain.Clock,
+	preconditions map[domain.Gate]GatePrecondition,
 ) *GateService {
-	return &GateService{videos: videos, log: log, tx: tx, clock: clock}
+	if preconditions == nil {
+		preconditions = map[domain.Gate]GatePrecondition{}
+	}
+	return &GateService{
+		videos:        videos,
+		log:           log,
+		tx:            tx,
+		clock:         clock,
+		preconditions: preconditions,
+	}
 }
 
 // Approve records a human approval and advances the video past the gate.
+//
+// Two things must hold: the video is at this gate (the state machine), and its
+// content meets the gate's bar (the precondition). Both are checked before
+// anything is written.
 func (s *GateService) Approve(ctx context.Context, id string, gate domain.Gate, note string) (*domain.Video, error) {
+	if check, has := s.preconditions[gate]; has {
+		if err := check(ctx, id); err != nil {
+			return nil, err
+		}
+	}
+
 	return s.decide(ctx, id, func(v *domain.Video) (*domain.ReviewEntry, error) {
 		from := v.Status
 		if err := domain.ApproveGate(v, gate); err != nil {

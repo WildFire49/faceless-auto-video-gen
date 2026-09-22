@@ -31,7 +31,31 @@ limits:
 
 llm:
   provider: ollama # swap: openai_compat
-  model: "qwen2.5:14b" # decide: 14b vs 7b, given 8 GB VRAM
+  # qwen3:8b rather than qwen2.5:14b. Fact extraction is pure structured
+  # output, and Qwen3 is the most reliable sub-8B model at schema-following;
+  # ~5 GB at Q4 also leaves headroom on an 8 GB card for FLUX from M6.
+  model: "qwen3:8b"
+  # Low temperature: we want the model to copy evidence sentences verbatim,
+  # not to write nicely. Creativity here shows up as hallucinated dates.
+  temperature: 0.1
+  # Ollama waits this long for a response before giving up.
+  request_timeout_seconds: 120
+  # The model gets one chunk at a time; larger chunks lose facts in the middle.
+  max_chunk_chars: 6000
+
+research:
+  # v1 sources (SPEC.md 5.2). Order matters: earlier sources win on conflict.
+  sources: [wikipedia, user_url]
+  # Gate A will not open with fewer than this many verified facts.
+  min_facts: 8
+  # How many distinct eras the facts must span.
+  min_eras: 4
+  # An extracted evidence sentence must match the source text at least this
+  # closely to survive. Below 1.0 to tolerate whitespace and unicode
+  # normalisation, but high enough that a reworded "quote" is rejected.
+  evidence_match_threshold: 0.90
+  # Cap on Wikipedia articles followed per topic.
+  max_articles: 3
 
 visuals:
   backend: flux_diffusers # swap: comfyui_api | sdxl

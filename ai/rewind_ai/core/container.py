@@ -18,11 +18,16 @@ from rewind_ai.core.logging import get_logger
 from rewind_ai.health import probes as probe_package
 from rewind_ai.health.base import Probe
 from rewind_ai.health.service import HealthChecker
+from rewind_ai.llm import factory as llm_factory
+from rewind_ai.llm.base import LLM, LLMConfig
+from rewind_ai.research import sources as research_source_package
+from rewind_ai.research.base import SourceFetcher
+from rewind_ai.research.service import ResearchConfig, ResearchService
 
 log = get_logger(__name__)
 
 #: Reported to the dashboard footer and in bug reports.
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,43 +36,95 @@ class Container:
 
     settings: Settings
     health: HealthChecker
+    research: ResearchService
+    llm: LLM
 
 
-def build(settings: Settings, *, llm_model: str = "") -> Container:
-    """Construct the object graph from configuration.
-
-    Args:
-        settings: parsed ``config/services.yaml``.
-        llm_model: the model the pipeline will need, so the Ollama probe can
-            report it as missing before M2 depends on it.
-    """
-    # Importing the providers package runs every @register decorator in it.
-    # Sweeping the package rather than listing imports is what lets a new
-    # provider be added without editing this file.
+def build(settings: Settings) -> Container:
+    """Construct the object graph from configuration."""
+    # Importing each providers package runs every @register decorator in it.
+    # Sweeping rather than listing imports is what lets a new provider be
+    # added without editing this file (SPEC.md 14.2).
     registry.load_providers(probe_package)
+    registry.load_providers(research_source_package)
 
-    probes = _build_probes(llm_model=llm_model)
-    log.info("providers registered", health_probes=registry.available("health_probe"))
+    llm_config = LLMConfig(
+        provider=settings.llm.provider,
+        model=settings.llm.model,
+        temperature=settings.llm.temperature,
+        request_timeout_seconds=settings.llm.request_timeout_seconds,
+        max_chunk_chars=settings.llm.max_chunk_chars,
+        base_url=settings.llm.base_url,
+    )
+    llm = llm_factory.build(llm_config)
+
+    fetchers = _build_fetchers(settings)
+    probes = _build_probes(llm_model=settings.llm.model, base_url=settings.llm.base_url)
+
+    log.info(
+        "providers registered",
+        llm=settings.llm.provider,
+        model=settings.llm.model,
+        research_sources=[f.name for f in fetchers],
+        health_probes=registry.available("health_probe"),
+    )
 
     return Container(
         settings=settings,
         health=HealthChecker(version=VERSION, probes=probes),
+        llm=llm,
+        research=ResearchService(
+            fetchers=fetchers,
+            llm=llm,
+            config=ResearchConfig(
+                min_facts=settings.research.min_facts,
+                min_eras=settings.research.min_eras,
+                evidence_match_threshold=settings.research.evidence_match_threshold,
+                max_chunk_chars=settings.llm.max_chunk_chars,
+            ),
+            projects_dir=settings.paths.projects,
+        ),
     )
 
 
-def _build_probes(*, llm_model: str) -> list[Probe]:
+def _build_fetchers(settings: Settings) -> list[SourceFetcher]:
+    """Instantiate the research sources named in config, in order.
+
+    Order matters: earlier sources are fetched first and win on conflict.
+    """
+    built: list[SourceFetcher] = []
+
+    for name in settings.research.sources:
+        try:
+            cls = registry.get("research_source", name)
+        except registry.ProviderError:
+            # A typo in config should not silently drop a source.
+            log.error("unknown research source in config", source=name)
+            raise
+
+        if name == "wikipedia":
+            built.append(cls(max_articles=settings.research.max_articles))
+        else:
+            built.append(cls())
+
+    return built
+
+
+def _build_probes(*, llm_model: str, base_url: str) -> list[Probe]:
     """Instantiate every registered health probe.
 
     Probes differ in their constructor arguments, so this function knows how
-    to supply them. It is the one seam where a provider's specific needs are
-    expressed -- and note it degrades rather than crashes when a probe cannot
-    be built, because a broken probe must never stop the worker from starting.
+    to supply them. It degrades rather than crashes when a probe cannot be
+    built, because a broken probe must never stop the worker from starting.
     """
     built: list[Probe] = []
     for name in registry.available("health_probe"):
         cls = registry.get("health_probe", name)
         try:
-            built.append(cls(model=llm_model) if name == "ollama" else cls())
-        except Exception as exc:
+            if name == "ollama":
+                built.append(cls(base_url=base_url, model=llm_model))
+            else:
+                built.append(cls())
+        except Exception as exc:  # noqa: BLE001 - see docstring
             log.warning("could not construct probe", probe=name, error=str(exc))
     return built

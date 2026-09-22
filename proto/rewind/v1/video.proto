@@ -35,6 +35,75 @@ service VideoService {
   // ListReviewLog returns the human-decision history for one video. This log
   // is the project's proof of human creative involvement (SPEC.md 8.4).
   rpc ListReviewLog(ListReviewLogRequest) returns (ListReviewLogResponse);
+
+  // RunStep starts the next pipeline step and returns IMMEDIATELY with a job
+  // id. Research takes minutes, so the request must never block on it
+  // (SPEC.md 8.3).
+  rpc RunStep(RunStepRequest) returns (RunStepResponse);
+
+  // GetJob reports a running job's progress. The dashboard polls this to draw
+  // its progress bar.
+  rpc GetJob(GetJobRequest) returns (GetJobResponse);
+
+  // GetLatestJob returns the most recent job for a video, so a page reload
+  // reattaches to work that is already running.
+  rpc GetLatestJob(GetLatestJobRequest) returns (GetLatestJobResponse);
+}
+
+// JobState is the lifecycle of one pipeline step execution.
+enum JobState {
+  JOB_STATE_UNSPECIFIED = 0;
+  JOB_STATE_RUNNING = 1;
+  JOB_STATE_SUCCEEDED = 2;
+  JOB_STATE_FAILED = 3;
+  // The process died while this job was running. Detected at startup
+  // (SPEC.md 13.3, crash recovery).
+  JOB_STATE_INTERRUPTED = 4;
+}
+
+message Job {
+  string id = 1;
+  string video_id = 2;
+  // Which step, e.g. "researching".
+  string step = 3;
+  JobState state = 4;
+
+  // Latest progress reported by the worker.
+  string stage = 5; // "fetching wikipedia"
+  double percent = 6; // 0..1
+  int32 current = 7;
+  int32 total = 8;
+
+  string error = 9;
+  string started_at = 10; // RFC 3339
+  string finished_at = 11;
+}
+
+message RunStepRequest {
+  string video_id = 1;
+}
+message RunStepResponse {
+  // Empty when there was nothing to do; `reason` says why.
+  Job job = 1;
+  bool started = 2;
+  // e.g. "waiting for your review at Gate A".
+  string reason = 3;
+}
+
+message GetJobRequest {
+  string job_id = 1;
+}
+message GetJobResponse {
+  bool exists = 1;
+  Job job = 2;
+}
+
+message GetLatestJobRequest {
+  string video_id = 1;
+}
+message GetLatestJobResponse {
+  bool exists = 1;
+  Job job = 2;
 }
 
 // VideoStatus mirrors the state machine in SPEC.md 2.3.

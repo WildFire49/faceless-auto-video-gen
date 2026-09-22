@@ -60,7 +60,7 @@ class HealthChecker:
         """
         try:
             return probe.check()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - contract enforced, see docstring
             log.warning("probe raised", probe=probe.name, error=str(exc))
             return ProbeResult(
                 name=probe.name,

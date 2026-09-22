@@ -26,6 +26,9 @@ const (
 	VideoService_RejectGate_FullMethodName    = "/rewind.v1.VideoService/RejectGate"
 	VideoService_RetryVideo_FullMethodName    = "/rewind.v1.VideoService/RetryVideo"
 	VideoService_ListReviewLog_FullMethodName = "/rewind.v1.VideoService/ListReviewLog"
+	VideoService_RunStep_FullMethodName       = "/rewind.v1.VideoService/RunStep"
+	VideoService_GetJob_FullMethodName        = "/rewind.v1.VideoService/GetJob"
+	VideoService_GetLatestJob_FullMethodName  = "/rewind.v1.VideoService/GetLatestJob"
 )
 
 // VideoServiceClient is the client API for VideoService service.
@@ -59,6 +62,16 @@ type VideoServiceClient interface {
 	// ListReviewLog returns the human-decision history for one video. This log
 	// is the project's proof of human creative involvement (SPEC.md 8.4).
 	ListReviewLog(ctx context.Context, in *ListReviewLogRequest, opts ...grpc.CallOption) (*ListReviewLogResponse, error)
+	// RunStep starts the next pipeline step and returns IMMEDIATELY with a job
+	// id. Research takes minutes, so the request must never block on it
+	// (SPEC.md 8.3).
+	RunStep(ctx context.Context, in *RunStepRequest, opts ...grpc.CallOption) (*RunStepResponse, error)
+	// GetJob reports a running job's progress. The dashboard polls this to draw
+	// its progress bar.
+	GetJob(ctx context.Context, in *GetJobRequest, opts ...grpc.CallOption) (*GetJobResponse, error)
+	// GetLatestJob returns the most recent job for a video, so a page reload
+	// reattaches to work that is already running.
+	GetLatestJob(ctx context.Context, in *GetLatestJobRequest, opts ...grpc.CallOption) (*GetLatestJobResponse, error)
 }
 
 type videoServiceClient struct {
@@ -139,6 +152,36 @@ func (c *videoServiceClient) ListReviewLog(ctx context.Context, in *ListReviewLo
 	return out, nil
 }
 
+func (c *videoServiceClient) RunStep(ctx context.Context, in *RunStepRequest, opts ...grpc.CallOption) (*RunStepResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RunStepResponse)
+	err := c.cc.Invoke(ctx, VideoService_RunStep_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *videoServiceClient) GetJob(ctx context.Context, in *GetJobRequest, opts ...grpc.CallOption) (*GetJobResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetJobResponse)
+	err := c.cc.Invoke(ctx, VideoService_GetJob_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *videoServiceClient) GetLatestJob(ctx context.Context, in *GetLatestJobRequest, opts ...grpc.CallOption) (*GetLatestJobResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetLatestJobResponse)
+	err := c.cc.Invoke(ctx, VideoService_GetLatestJob_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // VideoServiceServer is the server API for VideoService service.
 // All implementations must embed UnimplementedVideoServiceServer
 // for forward compatibility.
@@ -170,6 +213,16 @@ type VideoServiceServer interface {
 	// ListReviewLog returns the human-decision history for one video. This log
 	// is the project's proof of human creative involvement (SPEC.md 8.4).
 	ListReviewLog(context.Context, *ListReviewLogRequest) (*ListReviewLogResponse, error)
+	// RunStep starts the next pipeline step and returns IMMEDIATELY with a job
+	// id. Research takes minutes, so the request must never block on it
+	// (SPEC.md 8.3).
+	RunStep(context.Context, *RunStepRequest) (*RunStepResponse, error)
+	// GetJob reports a running job's progress. The dashboard polls this to draw
+	// its progress bar.
+	GetJob(context.Context, *GetJobRequest) (*GetJobResponse, error)
+	// GetLatestJob returns the most recent job for a video, so a page reload
+	// reattaches to work that is already running.
+	GetLatestJob(context.Context, *GetLatestJobRequest) (*GetLatestJobResponse, error)
 	mustEmbedUnimplementedVideoServiceServer()
 }
 
@@ -200,6 +253,15 @@ func (UnimplementedVideoServiceServer) RetryVideo(context.Context, *RetryVideoRe
 }
 func (UnimplementedVideoServiceServer) ListReviewLog(context.Context, *ListReviewLogRequest) (*ListReviewLogResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListReviewLog not implemented")
+}
+func (UnimplementedVideoServiceServer) RunStep(context.Context, *RunStepRequest) (*RunStepResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RunStep not implemented")
+}
+func (UnimplementedVideoServiceServer) GetJob(context.Context, *GetJobRequest) (*GetJobResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetJob not implemented")
+}
+func (UnimplementedVideoServiceServer) GetLatestJob(context.Context, *GetLatestJobRequest) (*GetLatestJobResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetLatestJob not implemented")
 }
 func (UnimplementedVideoServiceServer) mustEmbedUnimplementedVideoServiceServer() {}
 func (UnimplementedVideoServiceServer) testEmbeddedByValue()                      {}
@@ -348,6 +410,60 @@ func _VideoService_ListReviewLog_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VideoService_RunStep_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RunStepRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VideoServiceServer).RunStep(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VideoService_RunStep_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VideoServiceServer).RunStep(ctx, req.(*RunStepRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VideoService_GetJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetJobRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VideoServiceServer).GetJob(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VideoService_GetJob_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VideoServiceServer).GetJob(ctx, req.(*GetJobRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VideoService_GetLatestJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetLatestJobRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VideoServiceServer).GetLatestJob(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VideoService_GetLatestJob_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VideoServiceServer).GetLatestJob(ctx, req.(*GetLatestJobRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // VideoService_ServiceDesc is the grpc.ServiceDesc for VideoService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -382,6 +498,18 @@ var VideoService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListReviewLog",
 			Handler:    _VideoService_ListReviewLog_Handler,
+		},
+		{
+			MethodName: "RunStep",
+			Handler:    _VideoService_RunStep_Handler,
+		},
+		{
+			MethodName: "GetJob",
+			Handler:    _VideoService_GetJob_Handler,
+		},
+		{
+			MethodName: "GetLatestJob",
+			Handler:    _VideoService_GetLatestJob_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

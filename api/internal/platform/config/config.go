@@ -104,6 +104,49 @@ func (s Services) validate() error {
 	return nil
 }
 
+// Channel mirrors the parts of config/channel.yaml that Go needs.
+//
+// Go reads only what it enforces -- the Gate A thresholds. Voice, art style
+// and the rest belong to the Python worker, and duplicating them here would
+// create two sources of truth for one value.
+type Channel struct {
+	Research struct {
+		MinFacts int `koanf:"min_facts"`
+		MinEras  int `koanf:"min_eras"`
+	} `koanf:"research"`
+	LLM struct {
+		Model string `koanf:"model"`
+	} `koanf:"llm"`
+}
+
+// LoadChannel reads channel.yaml.
+//
+// Missing values fall back to the SPEC.md 5.2 defaults rather than to zero: a
+// min_facts of 0 would silently let Gate A be approved with no facts at all,
+// which is precisely the failure the threshold exists to prevent.
+func LoadChannel(configDir string) (Channel, error) {
+	var cfg Channel
+	path := filepath.Join(configDir, "channel.yaml")
+
+	if _, err := os.Stat(path); err == nil {
+		k := koanf.New(".")
+		if err := k.Load(file.Provider(path), yaml.Parser()); err != nil {
+			return cfg, fmt.Errorf("parsing %s: %w", path, err)
+		}
+		if err := k.Unmarshal("", &cfg); err != nil {
+			return cfg, fmt.Errorf("decoding %s: %w", path, err)
+		}
+	}
+
+	if cfg.Research.MinFacts <= 0 {
+		cfg.Research.MinFacts = 8
+	}
+	if cfg.Research.MinEras <= 0 {
+		cfg.Research.MinEras = 4
+	}
+	return cfg, nil
+}
+
 // FindDir locates the repository's config/ directory by walking up from the
 // working directory. It means `go run ./cmd/rewind-api` works from anywhere in
 // the repo, which matters more than it sounds like during development.

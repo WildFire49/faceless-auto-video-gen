@@ -14,6 +14,7 @@ import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
+import { useRouter } from 'next/navigation';
 
 import { GateProgress } from './GateProgress';
 import { Gate, VideoStatus, type Video } from '@/lib/gen/rewind/v1/video_pb';
@@ -156,7 +157,14 @@ const columns: GridColDef<Video>[] = [
   },
 ];
 
+/** Which gate page a video's row should open, if any. */
+const GATE_ROUTES: Partial<Record<Gate, string>> = {
+  [Gate.A_FACTS]: 'facts',
+};
+
 export function VideoTable({ videos, loading }: { videos: Video[]; loading: boolean }) {
+  const router = useRouter();
+
   return (
     <DataGrid
       rows={videos}
@@ -166,6 +174,14 @@ export function VideoTable({ videos, loading }: { videos: Video[]; loading: bool
       rowHeight={64}
       disableRowSelectionOnClick
       disableColumnMenu
+      onRowClick={(params) => {
+        // Only rows with a gate page built go anywhere. Clicking a video
+        // waiting at Gate D should do nothing until M5 builds that page,
+        // rather than navigating to a 404.
+        const video = params.row as Video;
+        const route = GATE_ROUTES[video.awaitingGate];
+        if (route) router.push(`/v/${video.id}/${route}`);
+      }}
       hideFooter={videos.length <= 25}
       initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
       sx={{
@@ -189,6 +205,8 @@ export function VideoTable({ videos, loading }: { videos: Video[]; loading: bool
         '& .MuiDataGrid-row:hover': {
           backgroundColor: `${palette.light.accent}0A`,
         },
+        // Only hint at clickability where there is somewhere to go.
+        '& .MuiDataGrid-row': { cursor: 'default' },
       }}
     />
   );

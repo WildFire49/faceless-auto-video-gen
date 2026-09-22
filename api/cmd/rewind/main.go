@@ -12,17 +12,13 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 
-	"github.com/WildFire49/faceless-auto-video-gen/api/internal/adapter/reviewmirror"
-	"github.com/WildFire49/faceless-auto-video-gen/api/internal/adapter/sqlite"
+	"github.com/WildFire49/faceless-auto-video-gen/api/internal/adapter/aifake"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/domain"
-	"github.com/WildFire49/faceless-auto-video-gen/api/internal/platform/clock"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/platform/config"
-	"github.com/WildFire49/faceless-auto-video-gen/api/internal/platform/idgen"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/platform/logging"
-	"github.com/WildFire49/faceless-auto-video-gen/api/internal/service"
+	"github.com/WildFire49/faceless-auto-video-gen/api/internal/platform/wiring"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/transport/cli"
 )
 
@@ -50,32 +46,29 @@ func run() error {
 		return fmt.Errorf("loading config: %w", err)
 	}
 
-	// Paths in config are relative to the repository root, which is the
-	// parent of config/. Resolving them here means the CLI works from any
-	// subdirectory.
-	repoRoot := filepath.Dir(configDir)
-	dbPath := filepath.Join(repoRoot, cfg.API.DBPath)
-	projectsDir := filepath.Join(repoRoot, cfg.Paths.Projects)
-
-	db, err := sqlite.Open(ctx, dbPath)
+	channel, err := config.LoadChannel(configDir)
 	if err != nil {
-		return err
+		return fmt.Errorf("loading channel config: %w", err)
 	}
-	defer func() { _ = db.Close() }()
 
 	// The CLI logs only real problems: its output is a human-readable report,
 	// not a log stream, so anything below Error would be noise.
 	log := logging.New(slog.LevelError, false)
 
-	videoRepo := sqlite.NewVideoRepo(db)
-	reviewLog := reviewmirror.New(sqlite.NewReviewLog(db), projectsDir, log)
-
-	videoService := service.NewVideoService(videoRepo, reviewLog, db, clock.New(), idgen.New())
-	gateService := service.NewGateService(videoRepo, reviewLog, db, clock.New())
+	// The CLI never starts a pipeline step itself -- `rewind run` is served by
+	// the API process, which owns the worker connection. A fake engine keeps
+	// the object graph complete without opening a second gRPC client that
+	// would sit unused.
+	app, err := wiring.Build(ctx, cfg, channel, configDir, aifake.NewHealthy(), log)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = app.Close() }()
 
 	root := cli.NewRootCommand(cli.Deps{
-		Videos: videoService,
-		Gates:  gateService,
+		Videos: app.Videos,
+		Gates:  app.Gates,
+		Facts:  app.Facts,
 		Out:    os.Stdout,
 	})
 	return root.ExecuteContext(ctx)

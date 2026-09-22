@@ -49,6 +49,7 @@ select = [
     "N",        # pep8 naming
     "UP",       # pyupgrade
     "B",        # bugbear
+    "BLE",      # blind except -- each deliberate one carries a noqa + reason
     "C901",     # complexity -- SPEC.md 14.4 caps this at 10
     "ANN",      # require type annotations
     "PTH",      # use pathlib, not os.path
@@ -61,7 +62,11 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 # gRPC servicer methods are named by the generator, not by us.
 "rewind_ai/handlers/*.py" = ["N802"]
-"tests/*.py" = ["ANN201", "ANN001"]
+"tests/*.py" = ["ANN201", "ANN001", "RUF001"]
+# The verifier's whole job is handling the typographic variants a model
+# substitutes when copying a sentence, so its lookup table is necessarily full
+# of "ambiguous" characters. That is the feature, not a mistake.
+"rewind_ai/research/verifier.py" = ["RUF001"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10
@@ -74,7 +79,8 @@ files = ["rewind_ai", "tests"]
 exclude = ["rewind/"]
 
 [[tool.mypy.overrides]]
-module = ["grpc.*", "grpc_tools.*", "structlog.*"]
+# trafilatura ships no type stubs, and is imported lazily inside one function.
+module = ["grpc.*", "grpc_tools.*", "structlog.*", "trafilatura.*"]
 ignore_missing_imports = true
 
 # protoc emits .pyi stubs for messages but NOT for the *_pb2_grpc service

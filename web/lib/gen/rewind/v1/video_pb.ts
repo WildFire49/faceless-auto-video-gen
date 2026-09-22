@@ -10,7 +10,210 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file rewind/v1/video.proto.
  */
 export const file_rewind_v1_video: GenFile = /*@__PURE__*/
-  fileDesc("ChVyZXdpbmQvdjEvdmlkZW8ucHJvdG8SCXJld2luZC52MSL4AgoFVmlkZW8SCgoCaWQYASABKAkSDQoFdG9waWMYAiABKAkSJgoGc3RhdHVzGAMgASgOMhYucmV3aW5kLnYxLlZpZGVvU3RhdHVzEhAKCHByaW9yaXR5GAQgASgFEg0KBW5vdGVzGAUgASgJEhIKCmNyZWF0ZWRfYXQYBiABKAkSEgoKdXBkYXRlZF9hdBgHIAEoCRIrCgtyZWplY3RlZF90bxgIIAEoDjIWLnJld2luZC52MS5WaWRlb1N0YXR1cxITCgtyZWplY3Rfbm90ZRgJIAEoCRINCgVlcnJvchgKIAEoCRIqCgpyZXRyeV9mcm9tGAsgASgOMhYucmV3aW5kLnYxLlZpZGVvU3RhdHVzEhMKC3l0X3ZpZGVvX2lkGAwgASgJEhQKDHB1Ymxpc2hlZF9hdBgNIAEoCRImCg1hd2FpdGluZ19nYXRlGA4gASgOMg8ucmV3aW5kLnYxLkdhdGUSEwoLaXNfdGVybWluYWwYDyABKAgiQQoPQWRkVmlkZW9SZXF1ZXN0Eg0KBXRvcGljGAEgASgJEhAKCHByaW9yaXR5GAIgASgFEg0KBW5vdGVzGAMgASgJIjMKEEFkZFZpZGVvUmVzcG9uc2USHwoFdmlkZW8YASABKAsyEC5yZXdpbmQudjEuVmlkZW8iWAoRTGlzdFZpZGVvc1JlcXVlc3QSGQoRbmVlZHNfcmV2aWV3X29ubHkYASABKAgSKAoIc3RhdHVzZXMYAiADKA4yFi5yZXdpbmQudjEuVmlkZW9TdGF0dXMiNgoSTGlzdFZpZGVvc1Jlc3BvbnNlEiAKBnZpZGVvcxgBIAMoCzIQLnJld2luZC52MS5WaWRlbyIjCg9HZXRWaWRlb1JlcXVlc3QSEAoIdmlkZW9faWQYASABKAkiMwoQR2V0VmlkZW9SZXNwb25zZRIfCgV2aWRlbxgBIAEoCzIQLnJld2luZC52MS5WaWRlbyJTChJBcHByb3ZlR2F0ZVJlcXVlc3QSEAoIdmlkZW9faWQYASABKAkSHQoEZ2F0ZRgCIAEoDjIPLnJld2luZC52MS5HYXRlEgwKBG5vdGUYAyABKAkiNgoTQXBwcm92ZUdhdGVSZXNwb25zZRIfCgV2aWRlbxgBIAEoCzIQLnJld2luZC52MS5WaWRlbyJ7ChFSZWplY3RHYXRlUmVxdWVzdBIQCgh2aWRlb19pZBgBIAEoCRIdCgRnYXRlGAIgASgOMg8ucmV3aW5kLnYxLkdhdGUSJwoHYmFja190bxgDIAEoDjIWLnJld2luZC52MS5WaWRlb1N0YXR1cxIMCgRub3RlGAQgASgJIjUKElJlamVjdEdhdGVSZXNwb25zZRIfCgV2aWRlbxgBIAEoCzIQLnJld2luZC52MS5WaWRlbyIlChFSZXRyeVZpZGVvUmVxdWVzdBIQCgh2aWRlb19pZBgBIAEoCSI1ChJSZXRyeVZpZGVvUmVzcG9uc2USHwoFdmlkZW8YASABKAsyEC5yZXdpbmQudjEuVmlkZW8iKAoUTGlzdFJldmlld0xvZ1JlcXVlc3QSEAoIdmlkZW9faWQYASABKAkiQwoVTGlzdFJldmlld0xvZ1Jlc3BvbnNlEioKB2VudHJpZXMYASADKAsyGS5yZXdpbmQudjEuUmV2aWV3TG9nRW50cnki3QEKDlJldmlld0xvZ0VudHJ5EgoKAmlkGAEgASgDEhAKCHZpZGVvX2lkGAIgASgJEgoKAmF0GAMgASgJEh0KBGdhdGUYBCABKA4yDy5yZXdpbmQudjEuR2F0ZRIOCgZhY3Rpb24YBSABKAkSKwoLZnJvbV9zdGF0dXMYBiABKA4yFi5yZXdpbmQudjEuVmlkZW9TdGF0dXMSKQoJdG9fc3RhdHVzGAcgASgOMhYucmV3aW5kLnYxLlZpZGVvU3RhdHVzEgwKBG5vdGUYCCABKAkSDAoEZGlmZhgJIAEoCSqLBgoLVmlkZW9TdGF0dXMSHAoYVklERU9fU1RBVFVTX1VOU1BFQ0lGSUVEEAASFwoTVklERU9fU1RBVFVTX1FVRVVFRBABEhwKGFZJREVPX1NUQVRVU19SRVNFQVJDSElORxACEhwKGFZJREVPX1NUQVRVU19GQUNUU19SRUFEWRADEh8KG1ZJREVPX1NUQVRVU19GQUNUU19BUFBST1ZFRBAEEh0KGVZJREVPX1NUQVRVU19GSU5ESU5HX1JFRlMQBRIbChdWSURFT19TVEFUVVNfUkVGU19SRUFEWRAGEh4KGlZJREVPX1NUQVRVU19SRUZTX0FQUFJPVkVEEAcSGgoWVklERU9fU1RBVFVTX1NDUklQVElORxAIEh0KGVZJREVPX1NUQVRVU19TQ1JJUFRfUkVBRFkQCRIgChxWSURFT19TVEFUVVNfU0NSSVBUX0FQUFJPVkVEEAoSGAoUVklERU9fU1RBVFVTX1ZPSUNJTkcQCxIcChhWSURFT19TVEFUVVNfVk9JQ0VfUkVBRFkQDBIfChtWSURFT19TVEFUVVNfVk9JQ0VfQVBQUk9WRUQQDRIYChRWSURFT19TVEFUVVNfSU1BR0lORxAOEiEKHVZJREVPX1NUQVRVU19TVE9SWUJPQVJEX1JFQURZEA8SJAogVklERU9fU1RBVFVTX1NUT1JZQk9BUkRfQVBQUk9WRUQQEBIaChZWSURFT19TVEFUVVNfUkVOREVSSU5HEBESHQoZVklERU9fU1RBVFVTX1JFTkRFUl9SRUFEWRASEh8KG1ZJREVPX1NUQVRVU19GSU5BTF9BUFBST1ZFRBATEhoKFlZJREVPX1NUQVRVU19VUExPQURJTkcQFBIhCh1WSURFT19TVEFUVVNfVVBMT0FERURfUFJJVkFURRAVEhoKFlZJREVPX1NUQVRVU19QVUJMSVNIRUQQFhIkCiBWSURFT19TVEFUVVNfQU5BTFlUSUNTX0NPTExFQ1RFRBAXEhYKElZJREVPX1NUQVRVU19FUlJPUhAYKpMBCgRHYXRlEhQKEEdBVEVfVU5TUEVDSUZJRUQQABIQCgxHQVRFX0FfRkFDVFMQARIVChFHQVRFX0JfUkVGRVJFTkNFUxACEhEKDUdBVEVfQ19TQ1JJUFQQAxIQCgxHQVRFX0RfVk9JQ0UQBBIVChFHQVRFX0VfU1RPUllCT0FSRBAFEhAKDEdBVEVfRl9GSU5BTBAGMpsECgxWaWRlb1NlcnZpY2USQwoIQWRkVmlkZW8SGi5yZXdpbmQudjEuQWRkVmlkZW9SZXF1ZXN0GhsucmV3aW5kLnYxLkFkZFZpZGVvUmVzcG9uc2USSQoKTGlzdFZpZGVvcxIcLnJld2luZC52MS5MaXN0VmlkZW9zUmVxdWVzdBodLnJld2luZC52MS5MaXN0VmlkZW9zUmVzcG9uc2USQwoIR2V0VmlkZW8SGi5yZXdpbmQudjEuR2V0VmlkZW9SZXF1ZXN0GhsucmV3aW5kLnYxLkdldFZpZGVvUmVzcG9uc2USTAoLQXBwcm92ZUdhdGUSHS5yZXdpbmQudjEuQXBwcm92ZUdhdGVSZXF1ZXN0Gh4ucmV3aW5kLnYxLkFwcHJvdmVHYXRlUmVzcG9uc2USSQoKUmVqZWN0R2F0ZRIcLnJld2luZC52MS5SZWplY3RHYXRlUmVxdWVzdBodLnJld2luZC52MS5SZWplY3RHYXRlUmVzcG9uc2USSQoKUmV0cnlWaWRlbxIcLnJld2luZC52MS5SZXRyeVZpZGVvUmVxdWVzdBodLnJld2luZC52MS5SZXRyeVZpZGVvUmVzcG9uc2USUgoNTGlzdFJldmlld0xvZxIfLnJld2luZC52MS5MaXN0UmV2aWV3TG9nUmVxdWVzdBogLnJld2luZC52MS5MaXN0UmV2aWV3TG9nUmVzcG9uc2ViBnByb3RvMw");
+  fileDesc("ChVyZXdpbmQvdjEvdmlkZW8ucHJvdG8SCXJld2luZC52MSLNAQoDSm9iEgoKAmlkGAEgASgJEhAKCHZpZGVvX2lkGAIgASgJEgwKBHN0ZXAYAyABKAkSIgoFc3RhdGUYBCABKA4yEy5yZXdpbmQudjEuSm9iU3RhdGUSDQoFc3RhZ2UYBSABKAkSDwoHcGVyY2VudBgGIAEoARIPCgdjdXJyZW50GAcgASgFEg0KBXRvdGFsGAggASgFEg0KBWVycm9yGAkgASgJEhIKCnN0YXJ0ZWRfYXQYCiABKAkSEwoLZmluaXNoZWRfYXQYCyABKAkiIgoOUnVuU3RlcFJlcXVlc3QSEAoIdmlkZW9faWQYASABKAkiTwoPUnVuU3RlcFJlc3BvbnNlEhsKA2pvYhgBIAEoCzIOLnJld2luZC52MS5Kb2ISDwoHc3RhcnRlZBgCIAEoCBIOCgZyZWFzb24YAyABKAkiHwoNR2V0Sm9iUmVxdWVzdBIOCgZqb2JfaWQYASABKAkiPQoOR2V0Sm9iUmVzcG9uc2USDgoGZXhpc3RzGAEgASgIEhsKA2pvYhgCIAEoCzIOLnJld2luZC52MS5Kb2IiJwoTR2V0TGF0ZXN0Sm9iUmVxdWVzdBIQCgh2aWRlb19pZBgBIAEoCSJDChRHZXRMYXRlc3RKb2JSZXNwb25zZRIOCgZleGlzdHMYASABKAgSGwoDam9iGAIgASgLMg4ucmV3aW5kLnYxLkpvYiL4AgoFVmlkZW8SCgoCaWQYASABKAkSDQoFdG9waWMYAiABKAkSJgoGc3RhdHVzGAMgASgOMhYucmV3aW5kLnYxLlZpZGVvU3RhdHVzEhAKCHByaW9yaXR5GAQgASgFEg0KBW5vdGVzGAUgASgJEhIKCmNyZWF0ZWRfYXQYBiABKAkSEgoKdXBkYXRlZF9hdBgHIAEoCRIrCgtyZWplY3RlZF90bxgIIAEoDjIWLnJld2luZC52MS5WaWRlb1N0YXR1cxITCgtyZWplY3Rfbm90ZRgJIAEoCRINCgVlcnJvchgKIAEoCRIqCgpyZXRyeV9mcm9tGAsgASgOMhYucmV3aW5kLnYxLlZpZGVvU3RhdHVzEhMKC3l0X3ZpZGVvX2lkGAwgASgJEhQKDHB1Ymxpc2hlZF9hdBgNIAEoCRImCg1hd2FpdGluZ19nYXRlGA4gASgOMg8ucmV3aW5kLnYxLkdhdGUSEwoLaXNfdGVybWluYWwYDyABKAgiQQoPQWRkVmlkZW9SZXF1ZXN0Eg0KBXRvcGljGAEgASgJEhAKCHByaW9yaXR5GAIgASgFEg0KBW5vdGVzGAMgASgJIjMKEEFkZFZpZGVvUmVzcG9uc2USHwoFdmlkZW8YASABKAsyEC5yZXdpbmQudjEuVmlkZW8iWAoRTGlzdFZpZGVvc1JlcXVlc3QSGQoRbmVlZHNfcmV2aWV3X29ubHkYASABKAgSKAoIc3RhdHVzZXMYAiADKA4yFi5yZXdpbmQudjEuVmlkZW9TdGF0dXMiNgoSTGlzdFZpZGVvc1Jlc3BvbnNlEiAKBnZpZGVvcxgBIAMoCzIQLnJld2luZC52MS5WaWRlbyIjCg9HZXRWaWRlb1JlcXVlc3QSEAoIdmlkZW9faWQYASABKAkiMwoQR2V0VmlkZW9SZXNwb25zZRIfCgV2aWRlbxgBIAEoCzIQLnJld2luZC52MS5WaWRlbyJTChJBcHByb3ZlR2F0ZVJlcXVlc3QSEAoIdmlkZW9faWQYASABKAkSHQoEZ2F0ZRgCIAEoDjIPLnJld2luZC52MS5HYXRlEgwKBG5vdGUYAyABKAkiNgoTQXBwcm92ZUdhdGVSZXNwb25zZRIfCgV2aWRlbxgBIAEoCzIQLnJld2luZC52MS5WaWRlbyJ7ChFSZWplY3RHYXRlUmVxdWVzdBIQCgh2aWRlb19pZBgBIAEoCRIdCgRnYXRlGAIgASgOMg8ucmV3aW5kLnYxLkdhdGUSJwoHYmFja190bxgDIAEoDjIWLnJld2luZC52MS5WaWRlb1N0YXR1cxIMCgRub3RlGAQgASgJIjUKElJlamVjdEdhdGVSZXNwb25zZRIfCgV2aWRlbxgBIAEoCzIQLnJld2luZC52MS5WaWRlbyIlChFSZXRyeVZpZGVvUmVxdWVzdBIQCgh2aWRlb19pZBgBIAEoCSI1ChJSZXRyeVZpZGVvUmVzcG9uc2USHwoFdmlkZW8YASABKAsyEC5yZXdpbmQudjEuVmlkZW8iKAoUTGlzdFJldmlld0xvZ1JlcXVlc3QSEAoIdmlkZW9faWQYASABKAkiQwoVTGlzdFJldmlld0xvZ1Jlc3BvbnNlEioKB2VudHJpZXMYASADKAsyGS5yZXdpbmQudjEuUmV2aWV3TG9nRW50cnki3QEKDlJldmlld0xvZ0VudHJ5EgoKAmlkGAEgASgDEhAKCHZpZGVvX2lkGAIgASgJEgoKAmF0GAMgASgJEh0KBGdhdGUYBCABKA4yDy5yZXdpbmQudjEuR2F0ZRIOCgZhY3Rpb24YBSABKAkSKwoLZnJvbV9zdGF0dXMYBiABKA4yFi5yZXdpbmQudjEuVmlkZW9TdGF0dXMSKQoJdG9fc3RhdHVzGAcgASgOMhYucmV3aW5kLnYxLlZpZGVvU3RhdHVzEgwKBG5vdGUYCCABKAkSDAoEZGlmZhgJIAEoCSqGAQoISm9iU3RhdGUSGQoVSk9CX1NUQVRFX1VOU1BFQ0lGSUVEEAASFQoRSk9CX1NUQVRFX1JVTk5JTkcQARIXChNKT0JfU1RBVEVfU1VDQ0VFREVEEAISFAoQSk9CX1NUQVRFX0ZBSUxFRBADEhkKFUpPQl9TVEFURV9JTlRFUlJVUFRFRBAEKosGCgtWaWRlb1N0YXR1cxIcChhWSURFT19TVEFUVVNfVU5TUEVDSUZJRUQQABIXChNWSURFT19TVEFUVVNfUVVFVUVEEAESHAoYVklERU9fU1RBVFVTX1JFU0VBUkNISU5HEAISHAoYVklERU9fU1RBVFVTX0ZBQ1RTX1JFQURZEAMSHwobVklERU9fU1RBVFVTX0ZBQ1RTX0FQUFJPVkVEEAQSHQoZVklERU9fU1RBVFVTX0ZJTkRJTkdfUkVGUxAFEhsKF1ZJREVPX1NUQVRVU19SRUZTX1JFQURZEAYSHgoaVklERU9fU1RBVFVTX1JFRlNfQVBQUk9WRUQQBxIaChZWSURFT19TVEFUVVNfU0NSSVBUSU5HEAgSHQoZVklERU9fU1RBVFVTX1NDUklQVF9SRUFEWRAJEiAKHFZJREVPX1NUQVRVU19TQ1JJUFRfQVBQUk9WRUQQChIYChRWSURFT19TVEFUVVNfVk9JQ0lORxALEhwKGFZJREVPX1NUQVRVU19WT0lDRV9SRUFEWRAMEh8KG1ZJREVPX1NUQVRVU19WT0lDRV9BUFBST1ZFRBANEhgKFFZJREVPX1NUQVRVU19JTUFHSU5HEA4SIQodVklERU9fU1RBVFVTX1NUT1JZQk9BUkRfUkVBRFkQDxIkCiBWSURFT19TVEFUVVNfU1RPUllCT0FSRF9BUFBST1ZFRBAQEhoKFlZJREVPX1NUQVRVU19SRU5ERVJJTkcQERIdChlWSURFT19TVEFUVVNfUkVOREVSX1JFQURZEBISHwobVklERU9fU1RBVFVTX0ZJTkFMX0FQUFJPVkVEEBMSGgoWVklERU9fU1RBVFVTX1VQTE9BRElORxAUEiEKHVZJREVPX1NUQVRVU19VUExPQURFRF9QUklWQVRFEBUSGgoWVklERU9fU1RBVFVTX1BVQkxJU0hFRBAWEiQKIFZJREVPX1NUQVRVU19BTkFMWVRJQ1NfQ09MTEVDVEVEEBcSFgoSVklERU9fU1RBVFVTX0VSUk9SEBgqkwEKBEdhdGUSFAoQR0FURV9VTlNQRUNJRklFRBAAEhAKDEdBVEVfQV9GQUNUUxABEhUKEUdBVEVfQl9SRUZFUkVOQ0VTEAISEQoNR0FURV9DX1NDUklQVBADEhAKDEdBVEVfRF9WT0lDRRAEEhUKEUdBVEVfRV9TVE9SWUJPQVJEEAUSEAoMR0FURV9GX0ZJTkFMEAYy7QUKDFZpZGVvU2VydmljZRJDCghBZGRWaWRlbxIaLnJld2luZC52MS5BZGRWaWRlb1JlcXVlc3QaGy5yZXdpbmQudjEuQWRkVmlkZW9SZXNwb25zZRJJCgpMaXN0VmlkZW9zEhwucmV3aW5kLnYxLkxpc3RWaWRlb3NSZXF1ZXN0Gh0ucmV3aW5kLnYxLkxpc3RWaWRlb3NSZXNwb25zZRJDCghHZXRWaWRlbxIaLnJld2luZC52MS5HZXRWaWRlb1JlcXVlc3QaGy5yZXdpbmQudjEuR2V0VmlkZW9SZXNwb25zZRJMCgtBcHByb3ZlR2F0ZRIdLnJld2luZC52MS5BcHByb3ZlR2F0ZVJlcXVlc3QaHi5yZXdpbmQudjEuQXBwcm92ZUdhdGVSZXNwb25zZRJJCgpSZWplY3RHYXRlEhwucmV3aW5kLnYxLlJlamVjdEdhdGVSZXF1ZXN0Gh0ucmV3aW5kLnYxLlJlamVjdEdhdGVSZXNwb25zZRJJCgpSZXRyeVZpZGVvEhwucmV3aW5kLnYxLlJldHJ5VmlkZW9SZXF1ZXN0Gh0ucmV3aW5kLnYxLlJldHJ5VmlkZW9SZXNwb25zZRJSCg1MaXN0UmV2aWV3TG9nEh8ucmV3aW5kLnYxLkxpc3RSZXZpZXdMb2dSZXF1ZXN0GiAucmV3aW5kLnYxLkxpc3RSZXZpZXdMb2dSZXNwb25zZRJACgdSdW5TdGVwEhkucmV3aW5kLnYxLlJ1blN0ZXBSZXF1ZXN0GhoucmV3aW5kLnYxLlJ1blN0ZXBSZXNwb25zZRI9CgZHZXRKb2ISGC5yZXdpbmQudjEuR2V0Sm9iUmVxdWVzdBoZLnJld2luZC52MS5HZXRKb2JSZXNwb25zZRJPCgxHZXRMYXRlc3RKb2ISHi5yZXdpbmQudjEuR2V0TGF0ZXN0Sm9iUmVxdWVzdBofLnJld2luZC52MS5HZXRMYXRlc3RKb2JSZXNwb25zZWIGcHJvdG8z");
+
+/**
+ * @generated from message rewind.v1.Job
+ */
+export type Job = Message<"rewind.v1.Job"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string video_id = 2;
+   */
+  videoId: string;
+
+  /**
+   * Which step, e.g. "researching".
+   *
+   * @generated from field: string step = 3;
+   */
+  step: string;
+
+  /**
+   * @generated from field: rewind.v1.JobState state = 4;
+   */
+  state: JobState;
+
+  /**
+   * Latest progress reported by the worker.
+   *
+   * "fetching wikipedia"
+   *
+   * @generated from field: string stage = 5;
+   */
+  stage: string;
+
+  /**
+   * 0..1
+   *
+   * @generated from field: double percent = 6;
+   */
+  percent: number;
+
+  /**
+   * @generated from field: int32 current = 7;
+   */
+  current: number;
+
+  /**
+   * @generated from field: int32 total = 8;
+   */
+  total: number;
+
+  /**
+   * @generated from field: string error = 9;
+   */
+  error: string;
+
+  /**
+   * RFC 3339
+   *
+   * @generated from field: string started_at = 10;
+   */
+  startedAt: string;
+
+  /**
+   * @generated from field: string finished_at = 11;
+   */
+  finishedAt: string;
+};
+
+/**
+ * Describes the message rewind.v1.Job.
+ * Use `create(JobSchema)` to create a new message.
+ */
+export const JobSchema: GenMessage<Job> = /*@__PURE__*/
+  messageDesc(file_rewind_v1_video, 0);
+
+/**
+ * @generated from message rewind.v1.RunStepRequest
+ */
+export type RunStepRequest = Message<"rewind.v1.RunStepRequest"> & {
+  /**
+   * @generated from field: string video_id = 1;
+   */
+  videoId: string;
+};
+
+/**
+ * Describes the message rewind.v1.RunStepRequest.
+ * Use `create(RunStepRequestSchema)` to create a new message.
+ */
+export const RunStepRequestSchema: GenMessage<RunStepRequest> = /*@__PURE__*/
+  messageDesc(file_rewind_v1_video, 1);
+
+/**
+ * @generated from message rewind.v1.RunStepResponse
+ */
+export type RunStepResponse = Message<"rewind.v1.RunStepResponse"> & {
+  /**
+   * Empty when there was nothing to do; `reason` says why.
+   *
+   * @generated from field: rewind.v1.Job job = 1;
+   */
+  job?: Job | undefined;
+
+  /**
+   * @generated from field: bool started = 2;
+   */
+  started: boolean;
+
+  /**
+   * e.g. "waiting for your review at Gate A".
+   *
+   * @generated from field: string reason = 3;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message rewind.v1.RunStepResponse.
+ * Use `create(RunStepResponseSchema)` to create a new message.
+ */
+export const RunStepResponseSchema: GenMessage<RunStepResponse> = /*@__PURE__*/
+  messageDesc(file_rewind_v1_video, 2);
+
+/**
+ * @generated from message rewind.v1.GetJobRequest
+ */
+export type GetJobRequest = Message<"rewind.v1.GetJobRequest"> & {
+  /**
+   * @generated from field: string job_id = 1;
+   */
+  jobId: string;
+};
+
+/**
+ * Describes the message rewind.v1.GetJobRequest.
+ * Use `create(GetJobRequestSchema)` to create a new message.
+ */
+export const GetJobRequestSchema: GenMessage<GetJobRequest> = /*@__PURE__*/
+  messageDesc(file_rewind_v1_video, 3);
+
+/**
+ * @generated from message rewind.v1.GetJobResponse
+ */
+export type GetJobResponse = Message<"rewind.v1.GetJobResponse"> & {
+  /**
+   * @generated from field: bool exists = 1;
+   */
+  exists: boolean;
+
+  /**
+   * @generated from field: rewind.v1.Job job = 2;
+   */
+  job?: Job | undefined;
+};
+
+/**
+ * Describes the message rewind.v1.GetJobResponse.
+ * Use `create(GetJobResponseSchema)` to create a new message.
+ */
+export const GetJobResponseSchema: GenMessage<GetJobResponse> = /*@__PURE__*/
+  messageDesc(file_rewind_v1_video, 4);
+
+/**
+ * @generated from message rewind.v1.GetLatestJobRequest
+ */
+export type GetLatestJobRequest = Message<"rewind.v1.GetLatestJobRequest"> & {
+  /**
+   * @generated from field: string video_id = 1;
+   */
+  videoId: string;
+};
+
+/**
+ * Describes the message rewind.v1.GetLatestJobRequest.
+ * Use `create(GetLatestJobRequestSchema)` to create a new message.
+ */
+export const GetLatestJobRequestSchema: GenMessage<GetLatestJobRequest> = /*@__PURE__*/
+  messageDesc(file_rewind_v1_video, 5);
+
+/**
+ * @generated from message rewind.v1.GetLatestJobResponse
+ */
+export type GetLatestJobResponse = Message<"rewind.v1.GetLatestJobResponse"> & {
+  /**
+   * @generated from field: bool exists = 1;
+   */
+  exists: boolean;
+
+  /**
+   * @generated from field: rewind.v1.Job job = 2;
+   */
+  job?: Job | undefined;
+};
+
+/**
+ * Describes the message rewind.v1.GetLatestJobResponse.
+ * Use `create(GetLatestJobResponseSchema)` to create a new message.
+ */
+export const GetLatestJobResponseSchema: GenMessage<GetLatestJobResponse> = /*@__PURE__*/
+  messageDesc(file_rewind_v1_video, 6);
 
 /**
  * @generated from message rewind.v1.Video
@@ -119,7 +322,7 @@ export type Video = Message<"rewind.v1.Video"> & {
  * Use `create(VideoSchema)` to create a new message.
  */
 export const VideoSchema: GenMessage<Video> = /*@__PURE__*/
-  messageDesc(file_rewind_v1_video, 0);
+  messageDesc(file_rewind_v1_video, 7);
 
 /**
  * @generated from message rewind.v1.AddVideoRequest
@@ -150,7 +353,7 @@ export type AddVideoRequest = Message<"rewind.v1.AddVideoRequest"> & {
  * Use `create(AddVideoRequestSchema)` to create a new message.
  */
 export const AddVideoRequestSchema: GenMessage<AddVideoRequest> = /*@__PURE__*/
-  messageDesc(file_rewind_v1_video, 1);
+  messageDesc(file_rewind_v1_video, 8);
 
 /**
  * @generated from message rewind.v1.AddVideoResponse
@@ -167,7 +370,7 @@ export type AddVideoResponse = Message<"rewind.v1.AddVideoResponse"> & {
  * Use `create(AddVideoResponseSchema)` to create a new message.
  */
 export const AddVideoResponseSchema: GenMessage<AddVideoResponse> = /*@__PURE__*/
-  messageDesc(file_rewind_v1_video, 2);
+  messageDesc(file_rewind_v1_video, 9);
 
 /**
  * @generated from message rewind.v1.ListVideosRequest
@@ -193,7 +396,7 @@ export type ListVideosRequest = Message<"rewind.v1.ListVideosRequest"> & {
  * Use `create(ListVideosRequestSchema)` to create a new message.
  */
 export const ListVideosRequestSchema: GenMessage<ListVideosRequest> = /*@__PURE__*/
-  messageDesc(file_rewind_v1_video, 3);
+  messageDesc(file_rewind_v1_video, 10);
 
 /**
  * @generated from message rewind.v1.ListVideosResponse
@@ -210,7 +413,7 @@ export type ListVideosResponse = Message<"rewind.v1.ListVideosResponse"> & {
  * Use `create(ListVideosResponseSchema)` to create a new message.
  */
 export const ListVideosResponseSchema: GenMessage<ListVideosResponse> = /*@__PURE__*/
-  messageDesc(file_rewind_v1_video, 4);
+  messageDesc(file_rewind_v1_video, 11);
 
 /**
  * @generated from message rewind.v1.GetVideoRequest
@@ -227,7 +430,7 @@ export type GetVideoRequest = Message<"rewind.v1.GetVideoRequest"> & {
  * Use `create(GetVideoRequestSchema)` to create a new message.
  */
 export const GetVideoRequestSchema: GenMessage<GetVideoRequest> = /*@__PURE__*/
-  messageDesc(file_rewind_v1_video, 5);
+  messageDesc(file_rewind_v1_video, 12);
 
 /**
  * @generated from message rewind.v1.GetVideoResponse
@@ -244,7 +447,7 @@ export type GetVideoResponse = Message<"rewind.v1.GetVideoResponse"> & {
  * Use `create(GetVideoResponseSchema)` to create a new message.
  */
 export const GetVideoResponseSchema: GenMessage<GetVideoResponse> = /*@__PURE__*/
-  messageDesc(file_rewind_v1_video, 6);
+  messageDesc(file_rewind_v1_video, 13);
 
 /**
  * @generated from message rewind.v1.ApproveGateRequest
@@ -277,7 +480,7 @@ export type ApproveGateRequest = Message<"rewind.v1.ApproveGateRequest"> & {
  * Use `create(ApproveGateRequestSchema)` to create a new message.
  */
 export const ApproveGateRequestSchema: GenMessage<ApproveGateRequest> = /*@__PURE__*/
-  messageDesc(file_rewind_v1_video, 7);
+  messageDesc(file_rewind_v1_video, 14);
 
 /**
  * @generated from message rewind.v1.ApproveGateResponse
@@ -294,7 +497,7 @@ export type ApproveGateResponse = Message<"rewind.v1.ApproveGateResponse"> & {
  * Use `create(ApproveGateResponseSchema)` to create a new message.
  */
 export const ApproveGateResponseSchema: GenMessage<ApproveGateResponse> = /*@__PURE__*/
-  messageDesc(file_rewind_v1_video, 8);
+  messageDesc(file_rewind_v1_video, 15);
 
 /**
  * @generated from message rewind.v1.RejectGateRequest
@@ -331,7 +534,7 @@ export type RejectGateRequest = Message<"rewind.v1.RejectGateRequest"> & {
  * Use `create(RejectGateRequestSchema)` to create a new message.
  */
 export const RejectGateRequestSchema: GenMessage<RejectGateRequest> = /*@__PURE__*/
-  messageDesc(file_rewind_v1_video, 9);
+  messageDesc(file_rewind_v1_video, 16);
 
 /**
  * @generated from message rewind.v1.RejectGateResponse
@@ -348,7 +551,7 @@ export type RejectGateResponse = Message<"rewind.v1.RejectGateResponse"> & {
  * Use `create(RejectGateResponseSchema)` to create a new message.
  */
 export const RejectGateResponseSchema: GenMessage<RejectGateResponse> = /*@__PURE__*/
-  messageDesc(file_rewind_v1_video, 10);
+  messageDesc(file_rewind_v1_video, 17);
 
 /**
  * @generated from message rewind.v1.RetryVideoRequest
@@ -365,7 +568,7 @@ export type RetryVideoRequest = Message<"rewind.v1.RetryVideoRequest"> & {
  * Use `create(RetryVideoRequestSchema)` to create a new message.
  */
 export const RetryVideoRequestSchema: GenMessage<RetryVideoRequest> = /*@__PURE__*/
-  messageDesc(file_rewind_v1_video, 11);
+  messageDesc(file_rewind_v1_video, 18);
 
 /**
  * @generated from message rewind.v1.RetryVideoResponse
@@ -382,7 +585,7 @@ export type RetryVideoResponse = Message<"rewind.v1.RetryVideoResponse"> & {
  * Use `create(RetryVideoResponseSchema)` to create a new message.
  */
 export const RetryVideoResponseSchema: GenMessage<RetryVideoResponse> = /*@__PURE__*/
-  messageDesc(file_rewind_v1_video, 12);
+  messageDesc(file_rewind_v1_video, 19);
 
 /**
  * @generated from message rewind.v1.ListReviewLogRequest
@@ -399,7 +602,7 @@ export type ListReviewLogRequest = Message<"rewind.v1.ListReviewLogRequest"> & {
  * Use `create(ListReviewLogRequestSchema)` to create a new message.
  */
 export const ListReviewLogRequestSchema: GenMessage<ListReviewLogRequest> = /*@__PURE__*/
-  messageDesc(file_rewind_v1_video, 13);
+  messageDesc(file_rewind_v1_video, 20);
 
 /**
  * @generated from message rewind.v1.ListReviewLogResponse
@@ -416,7 +619,7 @@ export type ListReviewLogResponse = Message<"rewind.v1.ListReviewLogResponse"> &
  * Use `create(ListReviewLogResponseSchema)` to create a new message.
  */
 export const ListReviewLogResponseSchema: GenMessage<ListReviewLogResponse> = /*@__PURE__*/
-  messageDesc(file_rewind_v1_video, 14);
+  messageDesc(file_rewind_v1_video, 21);
 
 /**
  * ReviewLogEntry is one human decision. Append-only.
@@ -481,7 +684,48 @@ export type ReviewLogEntry = Message<"rewind.v1.ReviewLogEntry"> & {
  * Use `create(ReviewLogEntrySchema)` to create a new message.
  */
 export const ReviewLogEntrySchema: GenMessage<ReviewLogEntry> = /*@__PURE__*/
-  messageDesc(file_rewind_v1_video, 15);
+  messageDesc(file_rewind_v1_video, 22);
+
+/**
+ * JobState is the lifecycle of one pipeline step execution.
+ *
+ * @generated from enum rewind.v1.JobState
+ */
+export enum JobState {
+  /**
+   * @generated from enum value: JOB_STATE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: JOB_STATE_RUNNING = 1;
+   */
+  RUNNING = 1,
+
+  /**
+   * @generated from enum value: JOB_STATE_SUCCEEDED = 2;
+   */
+  SUCCEEDED = 2,
+
+  /**
+   * @generated from enum value: JOB_STATE_FAILED = 3;
+   */
+  FAILED = 3,
+
+  /**
+   * The process died while this job was running. Detected at startup
+   * (SPEC.md 13.3, crash recovery).
+   *
+   * @generated from enum value: JOB_STATE_INTERRUPTED = 4;
+   */
+  INTERRUPTED = 4,
+}
+
+/**
+ * Describes the enum rewind.v1.JobState.
+ */
+export const JobStateSchema: GenEnum<JobState> = /*@__PURE__*/
+  enumDesc(file_rewind_v1_video, 0);
 
 /**
  * VideoStatus mirrors the state machine in SPEC.md 2.3.
@@ -640,7 +884,7 @@ export enum VideoStatus {
  * Describes the enum rewind.v1.VideoStatus.
  */
 export const VideoStatusSchema: GenEnum<VideoStatus> = /*@__PURE__*/
-  enumDesc(file_rewind_v1_video, 0);
+  enumDesc(file_rewind_v1_video, 1);
 
 /**
  * Gate identifies one of the six human review points (SPEC.md 2.2).
@@ -688,7 +932,7 @@ export enum Gate {
  * Describes the enum rewind.v1.Gate.
  */
 export const GateSchema: GenEnum<Gate> = /*@__PURE__*/
-  enumDesc(file_rewind_v1_video, 1);
+  enumDesc(file_rewind_v1_video, 2);
 
 /**
  * VideoService is the dashboard's view of the pipeline: the queue, each
@@ -776,6 +1020,40 @@ export const VideoService: GenService<{
     methodKind: "unary";
     input: typeof ListReviewLogRequestSchema;
     output: typeof ListReviewLogResponseSchema;
+  },
+  /**
+   * RunStep starts the next pipeline step and returns IMMEDIATELY with a job
+   * id. Research takes minutes, so the request must never block on it
+   * (SPEC.md 8.3).
+   *
+   * @generated from rpc rewind.v1.VideoService.RunStep
+   */
+  runStep: {
+    methodKind: "unary";
+    input: typeof RunStepRequestSchema;
+    output: typeof RunStepResponseSchema;
+  },
+  /**
+   * GetJob reports a running job's progress. The dashboard polls this to draw
+   * its progress bar.
+   *
+   * @generated from rpc rewind.v1.VideoService.GetJob
+   */
+  getJob: {
+    methodKind: "unary";
+    input: typeof GetJobRequestSchema;
+    output: typeof GetJobResponseSchema;
+  },
+  /**
+   * GetLatestJob returns the most recent job for a video, so a page reload
+   * reattaches to work that is already running.
+   *
+   * @generated from rpc rewind.v1.VideoService.GetLatestJob
+   */
+  getLatestJob: {
+    methodKind: "unary";
+    input: typeof GetLatestJobRequestSchema;
+    output: typeof GetLatestJobResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_rewind_v1_video, 0);

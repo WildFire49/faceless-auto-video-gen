@@ -78,8 +78,20 @@ task dev:nopython    # Go serves the fake AI adapter
 
 ### 4. Verify
 
+The real proof is the end-to-end run. With `task dev` running in another terminal:
+
 ```bash
-task test     # every suite: Go, Python, TypeScript
+task e2e                    # drives the live stack, writes artifacts/e2e/<run>/report.md
+task e2e -- --topic sandals
+```
+
+It queues a topic, runs research, independently re-downloads the sources to re-check every
+quotation, confirms Gate A stays shut until the fact sheet meets its bar, approves it, and
+verifies the decision reached the review log. The artifact it leaves behind holds the full
+request/response transcript, the fact sheet and a readable report.
+
+```bash
+task test     # isolated tests: Go, Python, TypeScript
 task check    # everything CI runs, including the layering linters
 ```
 
@@ -93,7 +105,8 @@ task check    # everything CI runs, including the layering linters
 | `task dev` | Run all three services |
 | `task dev:nopython` | Dashboard + Go API with the fake AI worker |
 | `task proto` | Regenerate Go, Python and TypeScript stubs |
-| `task test` | Run every test suite |
+| `task e2e` | **End-to-end run against the live stack; writes a report artifact** |
+| `task test` | Isolated test suites |
 | `task check` | Everything CI runs |
 | `task --list` | Show all tasks |
 
@@ -135,9 +148,9 @@ so the architecture cannot erode quietly.
 
 ## Current status
 
-**M1 — State & gates: complete.** SQLite with migrations, the 24-state video state machine, the
-six review gates, the append-only review log, the `rewind` CLI, and the queue table in the
-dashboard. No AI work happens yet; that starts at M2.
+**M2 — Research & Gate A: complete.** The pipeline does real work: it fetches Wikipedia, asks a
+local model to extract dated events, throws away anything it cannot trace back to the source, and
+presents what survives for review at Gate A.
 
 ```bash
 rewind add "iron"                 # queue a topic
@@ -150,8 +163,30 @@ rewind log iron                   # the human decision history
 Gates cannot be skipped, structurally: gate-crossing transitions live in a different table from
 automatic ones, so a pipeline step cannot perform one. See `api/internal/domain/state.go`.
 
-Next up is **M2**: the research module, the evidence verifier, and Gate A filling with sourced
-facts. See [SPEC.md §9](SPEC.md#9-build-milestones-one-claude-code-session-each).
+### The rule the whole project rests on
+
+**The LLM is never the source of a fact.** It may only point at a sentence in text we fetched.
+`ai/rewind_ai/research/verifier.py` then checks that sentence really is in that text, two ways:
+
+- **fuzzy prose match** — tolerates the curly quotes and citation markers a model drops when
+  copying, so honest facts are not rejected for cosmetic reasons
+- **exact number match** — because fuzzy matching is blind to the attack that matters most:
+
+  ```
+  source:   "...dated to approximately 7000 or 8000 BC, found at Fort Rock..."
+  evidence: "...dated to approximately 3000 or 4000 BC, found at Fort Rock..."
+  ```
+
+  That is a falsified date. It scores **0.99** on prose similarity — four characters out of a
+  hundred and eighty — so no prose threshold catches it. Every digit in the evidence must also
+  appear in the matching region of the source.
+
+A fact that fails either check is dropped before a human ever sees it. The counts are shown at
+Gate A, which makes them a measurement of the *model*: a high rejection rate means that model
+invents on this task.
+
+Next up is **M3**: the relevance engine and Gate B — finding modern references that make the
+history funny. See [SPEC.md §9](SPEC.md#9-build-milestones-one-claude-code-session-each).
 
 ---
 

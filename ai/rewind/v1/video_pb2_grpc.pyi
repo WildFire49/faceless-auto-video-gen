@@ -61,6 +61,19 @@ class VideoServiceStub:
     """ListReviewLog returns the human-decision history for one video. This log
     is the project's proof of human creative involvement (SPEC.md 8.4).
     """
+    RunStep: _grpc.UnaryUnaryMultiCallable[_video_pb2.RunStepRequest, _video_pb2.RunStepResponse]
+    """RunStep starts the next pipeline step and returns IMMEDIATELY with a job
+    id. Research takes minutes, so the request must never block on it
+    (SPEC.md 8.3).
+    """
+    GetJob: _grpc.UnaryUnaryMultiCallable[_video_pb2.GetJobRequest, _video_pb2.GetJobResponse]
+    """GetJob reports a running job's progress. The dashboard polls this to draw
+    its progress bar.
+    """
+    GetLatestJob: _grpc.UnaryUnaryMultiCallable[_video_pb2.GetLatestJobRequest, _video_pb2.GetLatestJobResponse]
+    """GetLatestJob returns the most recent job for a video, so a page reload
+    reattaches to work that is already running.
+    """
 
 @_typing.type_check_only
 class VideoServiceAsyncStub(VideoServiceStub):
@@ -94,6 +107,19 @@ class VideoServiceAsyncStub(VideoServiceStub):
     ListReviewLog: _aio.UnaryUnaryMultiCallable[_video_pb2.ListReviewLogRequest, _video_pb2.ListReviewLogResponse]  # type: ignore[assignment]
     """ListReviewLog returns the human-decision history for one video. This log
     is the project's proof of human creative involvement (SPEC.md 8.4).
+    """
+    RunStep: _aio.UnaryUnaryMultiCallable[_video_pb2.RunStepRequest, _video_pb2.RunStepResponse]  # type: ignore[assignment]
+    """RunStep starts the next pipeline step and returns IMMEDIATELY with a job
+    id. Research takes minutes, so the request must never block on it
+    (SPEC.md 8.3).
+    """
+    GetJob: _aio.UnaryUnaryMultiCallable[_video_pb2.GetJobRequest, _video_pb2.GetJobResponse]  # type: ignore[assignment]
+    """GetJob reports a running job's progress. The dashboard polls this to draw
+    its progress bar.
+    """
+    GetLatestJob: _aio.UnaryUnaryMultiCallable[_video_pb2.GetLatestJobRequest, _video_pb2.GetLatestJobResponse]  # type: ignore[assignment]
+    """GetLatestJob returns the most recent job for a video, so a page reload
+    reattaches to work that is already running.
     """
 
 class VideoServiceServicer(metaclass=_abc_1.ABCMeta):
@@ -167,6 +193,37 @@ class VideoServiceServicer(metaclass=_abc_1.ABCMeta):
     ) -> _typing.Union[_video_pb2.ListReviewLogResponse, _abc.Awaitable[_video_pb2.ListReviewLogResponse]]:
         """ListReviewLog returns the human-decision history for one video. This log
         is the project's proof of human creative involvement (SPEC.md 8.4).
+        """
+
+    @_abc_1.abstractmethod
+    def RunStep(
+        self,
+        request: _video_pb2.RunStepRequest,
+        context: _ServicerContext,
+    ) -> _typing.Union[_video_pb2.RunStepResponse, _abc.Awaitable[_video_pb2.RunStepResponse]]:
+        """RunStep starts the next pipeline step and returns IMMEDIATELY with a job
+        id. Research takes minutes, so the request must never block on it
+        (SPEC.md 8.3).
+        """
+
+    @_abc_1.abstractmethod
+    def GetJob(
+        self,
+        request: _video_pb2.GetJobRequest,
+        context: _ServicerContext,
+    ) -> _typing.Union[_video_pb2.GetJobResponse, _abc.Awaitable[_video_pb2.GetJobResponse]]:
+        """GetJob reports a running job's progress. The dashboard polls this to draw
+        its progress bar.
+        """
+
+    @_abc_1.abstractmethod
+    def GetLatestJob(
+        self,
+        request: _video_pb2.GetLatestJobRequest,
+        context: _ServicerContext,
+    ) -> _typing.Union[_video_pb2.GetLatestJobResponse, _abc.Awaitable[_video_pb2.GetLatestJobResponse]]:
+        """GetLatestJob returns the most recent job for a video, so a page reload
+        reattaches to work that is already running.
         """
 
 def add_VideoServiceServicer_to_server(servicer: VideoServiceServicer, server: _typing.Union[_grpc.Server, _aio.Server]) -> None: ...

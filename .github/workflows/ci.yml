@@ -243,6 +243,27 @@ jobs:
             echo "::error::a gate was crossed without the video being at it"; exit 1
           fi
 
+      # M2: the research step must be registered and reachable. The real run
+      # needs Ollama, which CI does not have, so this asserts the orchestration
+      # path responds correctly rather than that facts come back.
+      - name: The research step must be wired up
+        run: |
+          started=$(curl -sf -X POST             http://127.0.0.1:8080/rewind.v1.VideoService/RunStep             -H 'Content-Type: application/json' -d '{"videoId":"iron"}')
+          echo "$started"
+          echo "$started" | grep -q '"started":true' || {
+            echo "::error::RunStep did not start the research step"; exit 1;
+          }
+
+      - name: Gate A must refuse to open without facts
+        run: |
+          # No facts.json exists, so Gate A must be unapprovable -- the
+          # precondition, not just the state machine.
+          code=$(curl -s -o /tmp/gate.json -w '%{http_code}' -X POST             http://127.0.0.1:8080/rewind.v1.VideoService/ApproveGate             -H 'Content-Type: application/json'             -d '{"videoId":"iron","gate":"GATE_A_FACTS"}')
+          cat /tmp/gate.json
+          if [ "$code" = "200" ]; then
+            echo "::error::Gate A was approved with no fact sheet"; exit 1
+          fi
+
       - name: Logs on failure
         if: failure()
         run: cat /tmp/ai.log /tmp/api.log || true

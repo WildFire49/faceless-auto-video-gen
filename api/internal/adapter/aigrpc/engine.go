@@ -25,9 +25,12 @@ import (
 
 // Engine is a gRPC-backed AI worker client.
 type Engine struct {
-	conn          *grpc.ClientConn
-	health        rewindv1.HealthServiceClient
-	healthTimeout time.Duration
+	conn     *grpc.ClientConn
+	health   rewindv1.HealthServiceClient
+	research rewindv1.ResearchServiceClient
+
+	healthTimeout   time.Duration
+	researchTimeout time.Duration
 }
 
 // Options configure the client. Everything here comes from
@@ -40,6 +43,9 @@ type Options struct {
 	MaxMessageBytes int
 	// HealthTimeout bounds the Check RPC.
 	HealthTimeout time.Duration
+	// ResearchTimeout bounds BuildFactSheet. Generous: it fetches several
+	// articles and runs the model over each of them.
+	ResearchTimeout time.Duration
 }
 
 // New creates the client.
@@ -56,6 +62,9 @@ func New(opts Options) (*Engine, error) {
 	}
 	if opts.HealthTimeout <= 0 {
 		opts.HealthTimeout = 5 * time.Second
+	}
+	if opts.ResearchTimeout <= 0 {
+		opts.ResearchTimeout = 5 * time.Minute
 	}
 
 	conn, err := grpc.NewClient(
@@ -88,9 +97,11 @@ func New(opts Options) (*Engine, error) {
 	}
 
 	return &Engine{
-		conn:          conn,
-		health:        rewindv1.NewHealthServiceClient(conn),
-		healthTimeout: opts.HealthTimeout,
+		conn:            conn,
+		health:          rewindv1.NewHealthServiceClient(conn),
+		research:        rewindv1.NewResearchServiceClient(conn),
+		healthTimeout:   opts.HealthTimeout,
+		researchTimeout: opts.ResearchTimeout,
 	}, nil
 }
 
