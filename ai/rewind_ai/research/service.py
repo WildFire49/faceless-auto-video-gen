@@ -115,7 +115,10 @@ class ResearchService:
         # ---- 4. tidy --------------------------------------------------------
         report("sorting and de-duplicating", 0.9)
         facts = _sort_and_deduplicate(verified)
-        facts = _cap(facts, self._config.max_items)
+        # The cap must never trim below what the gate needs, or a low
+        # max_items would make research "fail" with plenty of good facts in
+        # hand. The reviewer's comfort does not outrank the gate's bar.
+        facts = _cap(facts, max(self._config.max_items, required))
         _assign_ids(facts)
         _flag_conflicts(facts)
 
@@ -370,16 +373,47 @@ def _is_duplicate(a: Fact, b: Fact) -> bool:
 
 
 def _cap(facts: list[Fact], limit: int) -> list[Fact]:
-    """Keep at most ``limit`` items, the best-verified ones.
+    """Keep at most ``limit`` items, PRESERVING VARIETY.
 
-    A real run produced 141 facts, which passes every threshold and is a
-    miserable thing to review. Trimming by match score keeps the most
-    defensible, then restores the format's ordering.
+    The obvious implementation -- keep the best-scoring ``limit`` items -- is
+    wrong, and a real run proved it: match score correlates with which source
+    an item came from, so the top 40 of 172 all landed in two eras and Gate A
+    refused them for lacking spread. The cap fixed one problem and created
+    another.
+
+    So the selection is round-robin across groups: the best item from each
+    group, then the second best from each, and so on. A sheet that could span
+    eight eras still does, and the trimming falls on whichever group has the
+    most to spare.
     """
     if limit <= 0 or len(facts) <= limit:
         return facts
 
-    kept = sorted(facts, key=lambda f: f.match_score, reverse=True)[:limit]
+    by_group: dict[str, list[Fact]] = {}
+    for fact in facts:
+        by_group.setdefault(fact.group, []).append(fact)
+
+    for group_facts in by_group.values():
+        group_facts.sort(key=lambda f: f.match_score, reverse=True)
+
+    # Groups with more to offer are visited first within each round, so a
+    # thinly populated group is never crowded out by a large one.
+    order = sorted(by_group, key=lambda g: len(by_group[g]), reverse=True)
+
+    kept: list[Fact] = []
+    depth = 0
+    while len(kept) < limit:
+        took_any = False
+        for group in order:
+            if depth < len(by_group[group]):
+                kept.append(by_group[group][depth])
+                took_any = True
+                if len(kept) >= limit:
+                    break
+        if not took_any:
+            break  # every group exhausted
+        depth += 1
+
     kept.sort(key=lambda f: (f.sort_key, f.label))
     return kept
 

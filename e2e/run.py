@@ -410,7 +410,10 @@ def check_approve_facts(client: Client, video_id: str) -> str:
     view = resp.get("view", {})
     if not view.get("canApprove"):
         raise E2EFailure(f"still cannot approve: {view.get('approvalBlocker')}")
-    return f"{view.get('approvedCount')} facts across {view.get('eraCount')} eras"
+    return (
+        f"{view.get('approvedCount')} facts across {view.get('groupCount')} "
+        f"{view.get('groupNoun', 'group')}s"
+    )
 
 
 def check_gate_a_opens(client: Client, video_id: str) -> str:

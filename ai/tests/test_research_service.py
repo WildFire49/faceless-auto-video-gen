@@ -19,8 +19,8 @@ import pytest
 
 from rewind_ai.core.errors import ValidationFailedError
 from rewind_ai.formats.providers.history_timeline import HistoryTimeline
-from rewind_ai.research.base import Document
-from rewind_ai.research.service import ResearchConfig, ResearchService
+from rewind_ai.research.base import Document, Fact
+from rewind_ai.research.service import ResearchConfig, ResearchService, _cap
 from rewind_ai.research.verifier import normalise
 
 # ------------------------------------------------------------------ fixtures
@@ -404,3 +404,83 @@ def test_a_failing_source_does_not_sink_the_run(tmp_path: Path, documents: list[
 
     result = service.build(video_id="sandals", topic="sandals", extra_urls=[])
     assert len(result.facts) >= 8
+
+
+# ------------------------------------------------------------------ the cap
+
+# _cap is tested directly: it is a pure function whose failure modes are the
+# point, and driving it through the service would need a format invented just
+# for the test. Written before the fix (CLAUDE.md):
+#
+#   * keeps the best-scoring items and collapses the spread   <- the real bug
+#   * returns items out of order
+#   * drops below the number the gate requires
+#   * starves a small group in favour of a large one
+
+
+def capped(groups: dict[str, int], limit: int) -> list[Fact]:
+    """Build facts in the named groups and run the cap over them."""
+    facts: list[Fact] = []
+    key = 0
+    for group, count in groups.items():
+        for i in range(count):
+            key += 1
+            facts.append(
+                Fact(
+                    label=str(key),
+                    sort_key=key,
+                    context="",
+                    claim=f"{group} {i}",
+                    evidence="x" * 40,
+                    source_url="https://example.com",
+                    group=group,
+                    # Deliberately lopsided: one group scores highest across
+                    # the board, which is what broke the real run.
+                    match_score=0.99 if group == "industrial" else 0.93,
+                )
+            )
+    return _cap(facts, limit)
+
+
+def test_cap_preserves_variety() -> None:
+    """The real bug: keeping the top-scoring items collapsed 172 facts into
+    2 eras, and Gate A refused them for lacking spread."""
+    kept = capped({"industrial": 30, "ancient": 6, "medieval": 5, "modern": 4}, limit=10)
+
+    assert len(kept) == 10
+    assert len({f.group for f in kept}) == 4, (
+        f"the cap kept only {sorted({f.group for f in kept})}; the high-scoring "
+        "group crowded everything else out"
+    )
+
+
+def test_cap_does_not_starve_a_small_group() -> None:
+    kept = capped({"industrial": 40, "prehistory": 1}, limit=5)
+    assert "prehistory" in {f.group for f in kept}
+
+
+def test_cap_keeps_order() -> None:
+    kept = capped({"a": 5, "b": 5, "c": 5}, limit=7)
+    keys = [f.sort_key for f in kept]
+    assert keys == sorted(keys), "the cap left the sheet out of order"
+
+
+def test_cap_is_a_no_op_below_the_limit() -> None:
+    kept = capped({"a": 3}, limit=10)
+    assert len(kept) == 3
+
+
+def test_cap_never_trims_below_the_gate_requirement(
+    tmp_path: Path, documents: list[Document]
+) -> None:
+    """A low max_items must not make research fail with good facts in hand."""
+    service = ResearchService(
+        fetchers=[FakeFetcher(documents)],
+        llm=FakeLLM([HONEST_EVENTS]),
+        content_format=HistoryTimeline(),
+        config=ResearchConfig(evidence_match_threshold=0.90, max_items=2),
+        projects_dir=tmp_path,
+    )
+
+    result = service.build(video_id="sandals", topic="sandals", extra_urls=[])
+    assert len(result.facts) >= 8, "the cap trimmed below what Gate A requires"

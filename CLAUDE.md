@@ -151,6 +151,10 @@ If you ever relax the number check, a falsified date reaches a human. Every late
 consumes these facts, so this is the foundation everything else stands on.
 
 ### Things the E2E run caught that unit tests did not
+- **a cap on items must preserve variety.** Keeping the best-scoring 40 of 172 collapsed
+  them into 2 eras and Gate A refused them. Selection is round-robin across groups.
+  Fixing "too many to review" created "too narrow to use" -- watch for that shape.
+- a trim must never go below what the gate requires
 Kept here because each was invisible to isolated tests and would recur:
 - a step must declare `From → Running → To`; a step that only knows its output status
   leaves freshly queued videos untouched
