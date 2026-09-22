@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/backoff"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 
@@ -62,6 +64,20 @@ func New(opts Options) (*Engine, error) {
 		// servers bind 127.0.0.1 (SPEC.md 13.5). If either end ever moves off
 		// this machine, this line must become real TLS credentials.
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		// Cap reconnect backoff at a few seconds. gRPC's default grows to ~2
+		// minutes after repeated failures, which is sensible across a WAN and
+		// wrong here: the worker is a local process the operator restarts by
+		// hand, and they must not have to wait minutes for the dashboard to
+		// notice it came back.
+		grpc.WithConnectParams(grpc.ConnectParams{
+			Backoff: backoff.Config{
+				BaseDelay:  200 * time.Millisecond,
+				Multiplier: 1.6,
+				Jitter:     0.2,
+				MaxDelay:   5 * time.Second,
+			},
+			MinConnectTimeout: 2 * time.Second,
+		}),
 		grpc.WithDefaultCallOptions(
 			grpc.MaxCallRecvMsgSize(opts.MaxMessageBytes),
 			grpc.MaxCallSendMsgSize(opts.MaxMessageBytes),
@@ -97,6 +113,13 @@ func (e *Engine) CheckHealth(ctx context.Context, deep bool) (domain.ComponentHe
 	defer cancel()
 	ctx = e.withTrace(ctx)
 
+	// If a previous attempt failed, the channel is parked in TransientFailure
+	// (or Idle) waiting out its backoff, and the call below would fail
+	// instantly with the stale error even though the worker is now up.
+	// Connect asks it to retry immediately, which is what makes the dashboard
+	// go green within one poll of the worker starting.
+	e.nudgeReconnect()
+
 	resp, err := e.health.Check(ctx, &rewindv1.CheckRequest{Deep: deep})
 	if err != nil {
 		return domain.ComponentHealth{
@@ -110,6 +133,18 @@ func (e *Engine) CheckHealth(ctx context.Context, deep bool) (domain.ComponentHe
 		Version:      resp.GetVersion(),
 		Dependencies: fromProtoDependencies(resp.GetDependencies()),
 	}, nil
+}
+
+// nudgeReconnect resets the channel's backoff when it is not usable, so a
+// worker that has just started is noticed on the next poll rather than after
+// the backoff interval elapses.
+func (e *Engine) nudgeReconnect() {
+	switch e.conn.GetState() {
+	case connectivity.TransientFailure, connectivity.Idle:
+		e.conn.Connect()
+	default:
+		// Ready, Connecting or Shutdown: nothing useful to do.
+	}
 }
 
 // withTrace forwards the request's trace id to Python as gRPC metadata, so one
