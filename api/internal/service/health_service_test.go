@@ -31,30 +31,30 @@ func TestGetSystemHealth(t *testing.T) {
 	tests := []struct {
 		name       string
 		engine     *aifake.Engine
-		wantSystem domain.Status
-		wantAI     domain.Status
+		wantSystem domain.HealthStatus
+		wantAI     domain.HealthStatus
 	}{
 		{
 			name:       "everything up",
 			engine:     aifake.NewHealthy(),
-			wantSystem: domain.StatusOK,
-			wantAI:     domain.StatusOK,
+			wantSystem: domain.HealthOK,
+			wantAI:     domain.HealthOK,
 		},
 		{
 			// The case that matters most: the dashboard must still render when
 			// the Python worker is not running, so this is DOWN, not an error.
 			name:       "ai worker stopped",
 			engine:     aifake.NewDown("connection refused"),
-			wantSystem: domain.StatusDown,
-			wantAI:     domain.StatusDown,
+			wantSystem: domain.HealthDown,
+			wantAI:     domain.HealthDown,
 		},
 		{
 			name: "ai worker degraded drags the system down to degraded",
 			engine: &aifake.Engine{
-				Health: domain.ComponentHealth{Status: domain.StatusDegraded, Detail: "model not pulled"},
+				Health: domain.ComponentHealth{Status: domain.HealthDegraded, Detail: "model not pulled"},
 			},
-			wantSystem: domain.StatusDegraded,
-			wantAI:     domain.StatusDegraded,
+			wantSystem: domain.HealthDegraded,
+			wantAI:     domain.HealthDegraded,
 		},
 	}
 
@@ -72,8 +72,8 @@ func TestGetSystemHealth(t *testing.T) {
 			if got.AI.Status != tc.wantAI {
 				t.Errorf("ai status = %q, want %q", got.AI.Status, tc.wantAI)
 			}
-			if got.API.Status != domain.StatusOK {
-				t.Errorf("api status = %q, want %q (we are running, so it is up)", got.API.Status, domain.StatusOK)
+			if got.API.Status != domain.HealthOK {
+				t.Errorf("api status = %q, want %q (we are running, so it is up)", got.API.Status, domain.HealthOK)
 			}
 			if got.API.Version != "test" {
 				t.Errorf("api version = %q, want %q", got.API.Version, "test")
@@ -120,16 +120,16 @@ func TestWorstOf(t *testing.T) {
 
 	tests := []struct {
 		name string
-		in   []domain.Status
-		want domain.Status
+		in   []domain.HealthStatus
+		want domain.HealthStatus
 	}{
-		{"no inputs is unknown, never a misleading ok", nil, domain.StatusUnknown},
-		{"all ok", []domain.Status{domain.StatusOK, domain.StatusOK}, domain.StatusOK},
-		{"down beats ok", []domain.Status{domain.StatusOK, domain.StatusDown}, domain.StatusDown},
-		{"down beats degraded", []domain.Status{domain.StatusDegraded, domain.StatusDown}, domain.StatusDown},
-		{"degraded beats ok", []domain.Status{domain.StatusOK, domain.StatusDegraded}, domain.StatusDegraded},
-		{"unknown beats degraded", []domain.Status{domain.StatusDegraded, domain.StatusUnknown}, domain.StatusUnknown},
-		{"unrecognised status is treated as unknown", []domain.Status{domain.StatusOK, domain.Status("bogus")}, domain.StatusUnknown},
+		{"no inputs is unknown, never a misleading ok", nil, domain.HealthUnknown},
+		{"all ok", []domain.HealthStatus{domain.HealthOK, domain.HealthOK}, domain.HealthOK},
+		{"down beats ok", []domain.HealthStatus{domain.HealthOK, domain.HealthDown}, domain.HealthDown},
+		{"down beats degraded", []domain.HealthStatus{domain.HealthDegraded, domain.HealthDown}, domain.HealthDown},
+		{"degraded beats ok", []domain.HealthStatus{domain.HealthOK, domain.HealthDegraded}, domain.HealthDegraded},
+		{"unknown beats degraded", []domain.HealthStatus{domain.HealthDegraded, domain.HealthUnknown}, domain.HealthUnknown},
+		{"unrecognised status is treated as unknown", []domain.HealthStatus{domain.HealthOK, domain.HealthStatus("bogus")}, domain.HealthUnknown},
 	}
 
 	for _, tc := range tests {

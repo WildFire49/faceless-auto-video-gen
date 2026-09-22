@@ -104,7 +104,7 @@ func (e *Engine) Close() error {
 
 // CheckHealth implements domain.AIEngine.
 //
-// A worker that is not running is reported as StatusDown, not as an error:
+// A worker that is not running is reported as HealthDown, not as an error:
 // "Python is stopped" is an expected state of this system, and the dashboard
 // renders it rather than failing (SPEC.md 11, "Go treats AI service down as a
 // normal retryable error").
@@ -123,7 +123,7 @@ func (e *Engine) CheckHealth(ctx context.Context, deep bool) (domain.ComponentHe
 	resp, err := e.health.Check(ctx, &rewindv1.CheckRequest{Deep: deep})
 	if err != nil {
 		return domain.ComponentHealth{
-			Status: domain.StatusDown,
+			Status: domain.HealthDown,
 			Detail: err.Error(),
 		}, nil
 	}
@@ -159,16 +159,16 @@ func (e *Engine) withTrace(ctx context.Context) context.Context {
 
 // fromProtoStatus maps the wire enum to the domain type. Translation lives in
 // the adapter so that domain/ never imports protobuf (SPEC.md 14.1, rule 1).
-func fromProtoStatus(s rewindv1.HealthStatus) domain.Status {
+func fromProtoStatus(s rewindv1.HealthStatus) domain.HealthStatus {
 	switch s {
 	case rewindv1.HealthStatus_HEALTH_STATUS_OK:
-		return domain.StatusOK
+		return domain.HealthOK
 	case rewindv1.HealthStatus_HEALTH_STATUS_DEGRADED:
-		return domain.StatusDegraded
+		return domain.HealthDegraded
 	case rewindv1.HealthStatus_HEALTH_STATUS_DOWN:
-		return domain.StatusDown
+		return domain.HealthDown
 	default:
-		return domain.StatusUnknown
+		return domain.HealthUnknown
 	}
 }
 

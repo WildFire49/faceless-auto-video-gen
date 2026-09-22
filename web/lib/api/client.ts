@@ -14,6 +14,7 @@ import { createClient, type Client } from '@connectrpc/connect';
 import { createConnectTransport } from '@connectrpc/connect-web';
 
 import { RewindService } from '@/lib/gen/rewind/v1/api_pb';
+import { VideoService } from '@/lib/gen/rewind/v1/video_pb';
 
 /**
  * Where the Go API lives. Mirrors `web.api_base_url` in config/services.yaml;
@@ -34,5 +35,8 @@ const transport = createConnectTransport({
 });
 
 export const rewindClient: Client<typeof RewindService> = createClient(RewindService, transport);
+
+/** The queue and the six review gates. */
+export const videoClient: Client<typeof VideoService> = createClient(VideoService, transport);
 
 export { baseUrl as apiBaseUrl };

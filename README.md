@@ -135,11 +135,23 @@ so the architecture cannot erode quietly.
 
 ## Current status
 
-**M0 — Plumbing: complete.** The contract, all three services, the layer skeleton, the provider
-registry, CI and the health check are in place. No AI work happens yet; that starts at M2.
+**M1 — State & gates: complete.** SQLite with migrations, the 24-state video state machine, the
+six review gates, the append-only review log, the `rewind` CLI, and the queue table in the
+dashboard. No AI work happens yet; that starts at M2.
 
-Next up is **M1**: SQLite, the video state machine, gates A–F, the `rewind` CLI, and the video
-queue table in the dashboard. See [SPEC.md §9](SPEC.md#9-build-milestones-one-claude-code-session-each).
+```bash
+rewind add "iron"                 # queue a topic
+rewind queue --needs-review       # what is waiting for you
+rewind approve iron A --note "checked every source"
+rewind reject iron C --back-to researching --note "the 1882 date is wrong"
+rewind log iron                   # the human decision history
+```
+
+Gates cannot be skipped, structurally: gate-crossing transitions live in a different table from
+automatic ones, so a pipeline step cannot perform one. See `api/internal/domain/state.go`.
+
+Next up is **M2**: the research module, the evidence verifier, and Gate A filling with sourced
+facts. See [SPEC.md §9](SPEC.md#9-build-milestones-one-claude-code-session-each).
 
 ---
 

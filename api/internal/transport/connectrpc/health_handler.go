@@ -48,13 +48,13 @@ func (h *HealthHandler) GetSystemHealth(
 
 // toProtoStatus maps the domain type to the wire enum. Translation lives here,
 // at the edge, so domain/ never imports protobuf.
-func toProtoStatus(s domain.Status) rewindv1.HealthStatus {
+func toProtoStatus(s domain.HealthStatus) rewindv1.HealthStatus {
 	switch s {
-	case domain.StatusOK:
+	case domain.HealthOK:
 		return rewindv1.HealthStatus_HEALTH_STATUS_OK
-	case domain.StatusDegraded:
+	case domain.HealthDegraded:
 		return rewindv1.HealthStatus_HEALTH_STATUS_DEGRADED
-	case domain.StatusDown:
+	case domain.HealthDown:
 		return rewindv1.HealthStatus_HEALTH_STATUS_DOWN
 	default:
 		return rewindv1.HealthStatus_HEALTH_STATUS_UNSPECIFIED

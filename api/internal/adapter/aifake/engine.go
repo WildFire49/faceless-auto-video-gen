@@ -34,7 +34,7 @@ type Engine struct {
 func NewHealthy() *Engine {
 	return &Engine{
 		Health: domain.ComponentHealth{
-			Status:  domain.StatusOK,
+			Status:  domain.HealthOK,
 			Version: "fake",
 		},
 	}
@@ -45,7 +45,7 @@ func NewHealthy() *Engine {
 func NewDown(detail string) *Engine {
 	return &Engine{
 		Health: domain.ComponentHealth{
-			Status: domain.StatusDown,
+			Status: domain.HealthDown,
 			Detail: detail,
 		},
 	}

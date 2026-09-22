@@ -59,8 +59,8 @@ func TestCheckHealthReportsDownWhenWorkerIsAbsent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CheckHealth returned an error for an absent worker: %v", err)
 	}
-	if got.Status != domain.StatusDown {
-		t.Errorf("status = %q, want %q", got.Status, domain.StatusDown)
+	if got.Status != domain.HealthDown {
+		t.Errorf("status = %q, want %q", got.Status, domain.HealthDown)
 	}
 	if got.Detail == "" {
 		t.Error("expected a detail explaining why the worker is unreachable")
@@ -96,8 +96,8 @@ func TestCheckHealthRecoversAfterWorkerRestart(t *testing.T) {
 
 	ctx := context.Background()
 
-	if got, _ := engine.CheckHealth(ctx, false); got.Status != domain.StatusOK {
-		t.Fatalf("before restart: status = %q, want %q", got.Status, domain.StatusOK)
+	if got, _ := engine.CheckHealth(ctx, false); got.Status != domain.HealthOK {
+		t.Fatalf("before restart: status = %q, want %q", got.Status, domain.HealthOK)
 	}
 
 	// Stop the worker, then poll repeatedly with pauses. Each failure grows
@@ -106,8 +106,8 @@ func TestCheckHealthRecoversAfterWorkerRestart(t *testing.T) {
 	// the recovery deadline below -- a handful of fast polls does not.
 	stop()
 	for range 12 {
-		if got, _ := engine.CheckHealth(ctx, false); got.Status != domain.StatusDown {
-			t.Fatalf("while stopped: status = %q, want %q", got.Status, domain.StatusDown)
+		if got, _ := engine.CheckHealth(ctx, false); got.Status != domain.HealthDown {
+			t.Fatalf("while stopped: status = %q, want %q", got.Status, domain.HealthDown)
 		}
 		time.Sleep(150 * time.Millisecond)
 	}
@@ -123,7 +123,7 @@ func TestCheckHealthRecoversAfterWorkerRestart(t *testing.T) {
 	start := time.Now()
 	deadline := start.Add(recoverWithin)
 	for time.Now().Before(deadline) {
-		if got, _ := engine.CheckHealth(ctx, false); got.Status == domain.StatusOK {
+		if got, _ := engine.CheckHealth(ctx, false); got.Status == domain.HealthOK {
 			t.Logf("recovered in %v", time.Since(start))
 			return
 		}

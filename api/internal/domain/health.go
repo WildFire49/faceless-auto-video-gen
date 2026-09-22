@@ -10,40 +10,40 @@ package domain
 
 import "time"
 
-// Status describes how healthy a component is. It is deliberately a small
+// HealthStatus describes how healthy a component is. It is deliberately a small
 // closed set rather than a bool, because "running but missing the model you
 // will need at M5" is genuinely different from both OK and DOWN.
-type Status string
+type HealthStatus string
 
 const (
-	// StatusUnknown means the check has not run yet.
-	StatusUnknown Status = "unknown"
-	// StatusOK means everything needed is present and working.
-	StatusOK Status = "ok"
-	// StatusDegraded means usable now, but something is missing that will
+	// HealthUnknown means the check has not run yet.
+	HealthUnknown HealthStatus = "unknown"
+	// HealthOK means everything needed is present and working.
+	HealthOK HealthStatus = "ok"
+	// HealthDegraded means usable now, but something is missing that will
 	// matter later -- e.g. Ollama is up but the model is not pulled.
-	StatusDegraded Status = "degraded"
-	// StatusDown means the component cannot do useful work.
-	StatusDown Status = "down"
+	HealthDegraded HealthStatus = "degraded"
+	// HealthDown means the component cannot do useful work.
+	HealthDown HealthStatus = "down"
 )
 
 // severity orders statuses from best to worst so they can be aggregated.
 // Unknown counts as worse than degraded: never report health you do not have.
-var severity = map[Status]int{
-	StatusOK:       0,
-	StatusDegraded: 1,
-	StatusUnknown:  2,
-	StatusDown:     3,
+var severity = map[HealthStatus]int{
+	HealthOK:       0,
+	HealthDegraded: 1,
+	HealthUnknown:  2,
+	HealthDown:     3,
 }
 
 // WorstOf returns the least healthy of the given statuses, which is how a
 // system-wide status is derived from its parts. Zero arguments yields
-// StatusUnknown rather than a misleading OK.
-func WorstOf(statuses ...Status) Status {
-	worst := StatusUnknown
+// HealthUnknown rather than a misleading OK.
+func WorstOf(statuses ...HealthStatus) HealthStatus {
+	worst := HealthUnknown
 	for i, s := range statuses {
 		if _, known := severity[s]; !known {
-			s = StatusUnknown
+			s = HealthUnknown
 		}
 		if i == 0 || severity[s] > severity[worst] {
 			worst = s
@@ -56,14 +56,14 @@ func WorstOf(statuses ...Status) Status {
 // GPU, or ffmpeg on PATH.
 type Dependency struct {
 	Name   string
-	Status Status
+	Status HealthStatus
 	Detail string
 }
 
 // ComponentHealth is the health of one service in the system.
 type ComponentHealth struct {
 	Name    string
-	Status  Status
+	Status  HealthStatus
 	Version string
 	// Detail carries the failure reason when Status is not OK. It is shown to
 	// the operator in the dashboard, so it must not contain secrets.
@@ -74,7 +74,7 @@ type ComponentHealth struct {
 
 // SystemHealth is the health of every component, plus the aggregate.
 type SystemHealth struct {
-	Status Status
+	Status HealthStatus
 	API    ComponentHealth
 	AI     ComponentHealth
 }

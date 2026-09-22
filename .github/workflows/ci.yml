@@ -218,6 +218,31 @@ jobs:
             echo "::error::spine is not healthy"; cat /tmp/ai.log /tmp/api.log; exit 1;
           }
 
+      # M1: the CLI and the HTTP API must share one service layer, so a video
+      # added through one is visible through the other and both enforce the
+      # same gate rules.
+      - name: The CLI and the API must agree
+        working-directory: api
+        run: |
+          go build -o /tmp/rewind ./cmd/rewind
+          cd "$GITHUB_WORKSPACE"
+          /tmp/rewind add "iron"
+          /tmp/rewind queue | grep -q iron || { echo "::error::CLI cannot see its own video"; exit 1; }
+
+          listed=$(curl -sf -X POST             http://127.0.0.1:8080/rewind.v1.VideoService/ListVideos             -H 'Content-Type: application/json' -d '{}')
+          echo "$listed" | grep -q '"iron"' || {
+            echo "::error::the API cannot see the video the CLI added"; exit 1;
+          }
+
+      - name: A gate cannot be crossed without a human
+        run: |
+          # iron is queued, so approving Gate A must be refused.
+          code=$(curl -s -o /tmp/resp.json -w '%{http_code}' -X POST             http://127.0.0.1:8080/rewind.v1.VideoService/ApproveGate             -H 'Content-Type: application/json'             -d '{"videoId":"iron","gate":"GATE_A_FACTS"}')
+          cat /tmp/resp.json
+          if [ "$code" = "200" ]; then
+            echo "::error::a gate was crossed without the video being at it"; exit 1
+          fi
+
       - name: Logs on failure
         if: failure()
         run: cat /tmp/ai.log /tmp/api.log || true

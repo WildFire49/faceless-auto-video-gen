@@ -102,8 +102,15 @@ interface it implements.
   in page or component code. Every animation respects `prefers-reduced-motion`.
 
 ## Current milestone
-M0 — Plumbing: **COMPLETE**, awaiting review. Do not start M1 without an explicit
-"approved, start M1" from the user.
+M1 — State & gates: **COMPLETE**, awaiting review. Do not start M2 without an explicit
+"approved, start M2" from the user.
+
+### Invariant M1 established — do not weaken it
+Gate-crossing transitions live in a SEPARATE table from automatic ones
+(`api/internal/domain/state.go`). `Transition` can only perform automatic moves;
+`ApproveGate` can only perform gate moves. A pipeline step therefore cannot skip a gate
+even if it tries, because the transition it would need is not in the table it consults.
+When M2 adds pipeline steps, they call `Transition` — never `ApproveGate`.
 
 ## Commands (this repo uses go-task, not make)
 - `task dev` — all three services · `task dev:nopython` — API with the fake AI adapter

@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -25,10 +26,13 @@ import (
 	"github.com/WildFire49/faceless-auto-video-gen/api/gen/rewind/v1/rewindv1connect"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/adapter/aifake"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/adapter/aigrpc"
+	"github.com/WildFire49/faceless-auto-video-gen/api/internal/adapter/reviewmirror"
+	"github.com/WildFire49/faceless-auto-video-gen/api/internal/adapter/sqlite"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/domain"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/platform/buildinfo"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/platform/clock"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/platform/config"
+	"github.com/WildFire49/faceless-auto-video-gen/api/internal/platform/idgen"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/platform/logging"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/service"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/transport/connectrpc"
@@ -74,6 +78,20 @@ func run() error {
 		return fmt.Errorf("loading config: %w", err)
 	}
 
+	// ---- storage -----------------------------------------------------------
+	// Paths in config are relative to the repository root, the parent of
+	// config/, so the server works from any working directory.
+	repoRoot := filepath.Dir(dir)
+	db, err := sqlite.Open(context.Background(), filepath.Join(repoRoot, cfg.API.DBPath))
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Error("closing database", slog.Any("error", err))
+		}
+	}()
+
 	// ---- adapters (the only place concrete types are chosen) ---------------
 	var ai domain.AIEngine
 	if *fakeAI {
@@ -97,12 +115,23 @@ func run() error {
 	}
 
 	// ---- use cases ---------------------------------------------------------
+	videoRepo := sqlite.NewVideoRepo(db)
+	reviewLog := reviewmirror.New(sqlite.NewReviewLog(db), filepath.Join(repoRoot, cfg.Paths.Projects), log)
+
 	healthService := service.NewHealthService(ai, clock.New(), buildinfo.New())
+	videoService := service.NewVideoService(videoRepo, reviewLog, db, clock.New(), idgen.New())
+	gateService := service.NewGateService(videoRepo, reviewLog, db, clock.New())
 
 	// ---- transport ---------------------------------------------------------
 	mux := http.NewServeMux()
-	path, handler := rewindv1connect.NewRewindServiceHandler(connectrpc.NewHealthHandler(healthService))
-	mux.Handle(path, handler)
+
+	healthPath, healthHandler := rewindv1connect.NewRewindServiceHandler(
+		connectrpc.NewHealthHandler(healthService))
+	mux.Handle(healthPath, healthHandler)
+
+	videoPath, videoHandler := rewindv1connect.NewVideoServiceHandler(
+		connectrpc.NewVideoHandler(videoService, gateService))
+	mux.Handle(videoPath, videoHandler)
 
 	// A plain liveness endpoint, so `curl` and container probes do not need to
 	// speak Connect to find out whether the process is up.

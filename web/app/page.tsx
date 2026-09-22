@@ -1,34 +1,35 @@
 /**
- * Home.
+ * Home — the video queue (SPEC.md 8).
  *
- * In M0 this page exists to prove one thing: the whole spine works.
- * The chip below is fetched Next.js -> Go (Connect/JSON) -> Python (gRPC) and
- * back. When it is green, all three services and the generated contract are
- * talking to each other (SPEC.md 9, M0).
- *
- * M1 replaces the placeholder below with the video queue.
+ * M1: the queue table, a "needs my review" filter, and adding a topic. The
+ * per-gate pages arrive with the modules that fill them, from M2 onward.
  */
 
 'use client';
 
+import AddIcon from '@mui/icons-material/Add';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
-import Divider from '@mui/material/Divider';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 import * as motion from 'motion/react-client';
+import { useState } from 'react';
 
+import { AddVideoDialog } from '@/features/videos/AddVideoDialog';
+import { VideoTable } from '@/features/videos/VideoTable';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useSystemHealth } from '@/lib/api/queries';
-import { type ComponentHealth } from '@/lib/gen/rewind/v1/api_pb';
+import { useVideos } from '@/lib/api/videos';
 import { HealthStatus } from '@/lib/gen/rewind/v1/health_pb';
 import { slideIn } from '@/theme/motion';
 import { material, palette } from '@/theme/tokens';
 
-/** Wire enum -> human label. The UI never shows a raw enum name. */
-function statusLabel(status: HealthStatus): string {
+function healthLabel(status: HealthStatus): string {
   switch (status) {
     case HealthStatus.OK:
       return 'healthy';
@@ -43,18 +44,14 @@ function statusLabel(status: HealthStatus): string {
 
 export default function HomePage() {
   const reduced = useReducedMotion();
-  const { data, isLoading, error } = useSystemHealth();
+  const [needsReviewOnly, setNeedsReviewOnly] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
-  // A stopped Go API is an expected state while developing, so it renders as
-  // DOWN rather than as a crash (SPEC.md 8.3).
-  const api: Partial<ComponentHealth> = data?.api ?? {
-    status: error ? HealthStatus.DOWN : HealthStatus.UNSPECIFIED,
-    detail: error?.message ?? '',
-  };
-  const ai: Partial<ComponentHealth> = data?.ai ?? {
-    status: HealthStatus.UNSPECIFIED,
-    detail: error ? 'unknown while the API is unreachable' : '',
-  };
+  const health = useSystemHealth();
+  const videos = useVideos(needsReviewOnly);
+
+  const aiStatus = health.data?.ai?.status ?? HealthStatus.UNSPECIFIED;
+  const apiUnreachable = health.isError;
 
   return (
     <Box component="main" sx={{ minHeight: '100dvh', bgcolor: 'background.default' }}>
@@ -69,101 +66,92 @@ export default function HomePage() {
           backdropFilter: material.blur,
           WebkitBackdropFilter: material.blur,
           borderBottom: `1px solid ${palette.light.hairline}`,
-          bgcolor: 'transparent',
         }}
       >
-        <Container maxWidth="md">
+        <Container maxWidth="lg">
           <Stack
             direction="row"
             alignItems="center"
             justifyContent="space-between"
-            sx={{ py: 3, gap: 2 }}
+            sx={{ py: 3, gap: 2, flexWrap: 'wrap' }}
           >
             <Typography variant="h3" component="h1">
               Rewind Studio
             </Typography>
-            <StatusChip
-              status={ai.status ?? HealthStatus.UNSPECIFIED}
-              label={`AI service ${statusLabel(ai.status ?? HealthStatus.UNSPECIFIED)}`}
-              detail={ai.detail || undefined}
-              loading={isLoading}
-            />
+
+            <Stack direction="row" spacing={2} alignItems="center">
+              <StatusChip
+                status={apiUnreachable ? HealthStatus.DOWN : aiStatus}
+                label={apiUnreachable ? 'API unreachable' : `AI service ${healthLabel(aiStatus)}`}
+                detail={
+                  apiUnreachable ? health.error?.message : health.data?.ai?.detail || undefined
+                }
+                loading={health.isLoading}
+              />
+              <Button variant="contained" startIcon={<AddIcon />} onClick={() => setAddOpen(true)}>
+                Queue a topic
+              </Button>
+            </Stack>
           </Stack>
         </Container>
       </Box>
 
-      <Container maxWidth="md" sx={{ py: 6 }}>
+      <Container maxWidth="lg" sx={{ py: 5 }}>
         <motion.div {...slideIn(reduced)}>
-          <Stack spacing={4}>
-            <Stack spacing={1}>
-              <Typography variant="h1">Milestone 0</Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ maxWidth: '58ch' }}>
-                The spine is wired. This page calls the Go API over Connect, which calls the
-                Python worker over gRPC, using stubs generated from a single set of{' '}
-                <code>.proto</code> files. Nothing here does any AI work yet — that starts at M2.
-              </Typography>
-            </Stack>
+          <Stack spacing={3}>
+            <Tabs
+              value={needsReviewOnly ? 1 : 0}
+              onChange={(_, v) => setNeedsReviewOnly(v === 1)}
+              sx={{ minHeight: 0, '& .MuiTab-root': { minHeight: 0, py: 1.5 } }}
+            >
+              <Tab label="All videos" />
+              <Tab label="Needs my review" />
+            </Tabs>
 
-            <Paper component="section" sx={{ p: 0 }}>
-              <Stack divider={<Divider />}>
-                <ServiceRow
-                  name="Go API"
-                  role="Owns state, gates and orchestration"
-                  health={api}
+            <Paper sx={{ overflow: 'hidden' }}>
+              {videos.isError ? (
+                <EmptyState
+                  title="Cannot reach the API"
+                  body={`${videos.error.message}. Start it with \`task dev\`.`}
                 />
-                <ServiceRow
-                  name="Python AI worker"
-                  role="Owns model and media work; no state"
-                  health={ai}
+              ) : videos.data && videos.data.length === 0 ? (
+                <EmptyState
+                  title={needsReviewOnly ? 'Nothing needs you right now' : 'The queue is empty'}
+                  body={
+                    needsReviewOnly
+                      ? 'Videos appear here the moment they reach a review gate.'
+                      : 'Queue an everyday object — iron, computer mouse, sandals — and the pipeline traces its history.'
+                  }
                 />
-              </Stack>
+              ) : (
+                <Box sx={{ height: 'min(70vh, 640px)' }}>
+                  <VideoTable videos={videos.data ?? []} loading={videos.isLoading} />
+                </Box>
+              )}
             </Paper>
 
             <Typography variant="body2" color="text.secondary">
-              Next: <strong>M1</strong> — SQLite, the video state machine, gates A–F and the queue
-              table that replaces this placeholder.
+              <strong>M1</strong> — the queue, the state machine and the six gates. Pipeline steps
+              arrive in M2, when Gate A starts filling with researched facts.
             </Typography>
           </Stack>
         </motion.div>
       </Container>
+
+      <AddVideoDialog open={addOpen} onClose={() => setAddOpen(false)} />
     </Box>
   );
 }
 
-function ServiceRow({
-  name,
-  role,
-  health,
-}: {
-  name: string;
-  role: string;
-  health: Partial<ComponentHealth>;
-}) {
-  const status = health.status ?? HealthStatus.UNSPECIFIED;
-
+function EmptyState({ title, body }: { title: string; body: string }) {
   return (
-    <Stack
-      direction={{ xs: 'column', sm: 'row' }}
-      alignItems={{ xs: 'flex-start', sm: 'center' }}
-      justifyContent="space-between"
-      sx={{ p: 3, gap: 2 }}
-    >
-      <Stack spacing={0.5}>
-        <Typography variant="h3" component="h2">
-          {name}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {role}
-        </Typography>
-        {health.version ? (
-          <Typography variant="body2" color="text.secondary">
-            version {health.version}
-            {health.latencyMs ? ` · ${health.latencyMs}ms` : ''}
-          </Typography>
-        ) : null}
-      </Stack>
-
-      <StatusChip status={status} label={statusLabel(status)} detail={health.detail || undefined} />
+    <Stack spacing={1} alignItems="center" sx={{ py: 10, px: 4, textAlign: 'center' }}>
+      <Typography variant="h3" component="p">
+        {title}
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ maxWidth: '46ch' }}>
+        {body}
+      </Typography>
     </Stack>
   );
 }

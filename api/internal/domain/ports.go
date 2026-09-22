@@ -23,7 +23,7 @@ import (
 type AIEngine interface {
 	// CheckHealth probes the worker. A worker that is not running is NOT an
 	// error from the caller's point of view -- it is a DOWN component -- so
-	// implementations return a ComponentHealth with StatusDown rather than a
+	// implementations return a ComponentHealth with HealthDown rather than a
 	// non-nil error when the connection simply fails. An error is reserved for
 	// the caller's own mistakes, such as a cancelled context.
 	CheckHealth(ctx context.Context, deep bool) (ComponentHealth, error)
@@ -42,4 +42,54 @@ type Clock interface {
 // bug reports. It is a port rather than a constant so tests get stable output.
 type BuildInfo interface {
 	Version() string
+}
+
+// VideoRepo stores videos. All SQL lives behind this interface; nothing above
+// the adapter layer ever sees a query.
+type VideoRepo interface {
+	// Create stores a new video. Returns ErrAlreadyExists if the id is taken.
+	Create(ctx context.Context, v *Video) error
+	// Get returns one video, or ErrNotFound.
+	Get(ctx context.Context, id string) (*Video, error)
+	// List returns videos matching the filter, ordered for the queue view.
+	List(ctx context.Context, f VideoFilter) ([]*Video, error)
+	// Update writes a video back. Returns ErrNotFound if it has vanished.
+	Update(ctx context.Context, v *Video) error
+}
+
+// VideoFilter narrows a List. The zero value means "everything".
+type VideoFilter struct {
+	// Statuses, when non-empty, restricts results to these statuses.
+	Statuses []Status
+	// AwaitingReview restricts results to videos sitting at a gate -- the
+	// "needs my review" view that is the dashboard's default.
+	AwaitingReview bool
+}
+
+// ReviewLog is the append-only record of human decisions. It is the project's
+// evidence of human creative involvement (SPEC.md 8.4), so there is
+// deliberately no Update and no Delete.
+type ReviewLog interface {
+	Append(ctx context.Context, e *ReviewEntry) error
+	List(ctx context.Context, videoID string) ([]*ReviewEntry, error)
+}
+
+// TxManager runs work inside a database transaction.
+//
+// It exists so a state change and its review-log entry commit together or not
+// at all (SPEC.md 13.3) -- an approval that moved a video but lost its audit
+// entry would destroy the very evidence the log is for.
+//
+// The returned context carries the transaction; implementations of VideoRepo
+// and ReviewLog pick it up automatically, so callers just use ctx as normal.
+type TxManager interface {
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
+}
+
+// IDGen produces video ids from topics. A port so tests get deterministic ids
+// and so collision handling can be exercised.
+type IDGen interface {
+	// NewID returns an id for the topic that does not collide with an
+	// existing one, consulting exists to find out.
+	NewID(ctx context.Context, topic string, exists func(context.Context, string) (bool, error)) (string, error)
 }

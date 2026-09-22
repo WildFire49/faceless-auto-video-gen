@@ -40,7 +40,7 @@ func NewHealthService(ai domain.AIEngine, clock domain.Clock, build domain.Build
 func (s *HealthService) GetSystemHealth(ctx context.Context, deep bool) (domain.SystemHealth, error) {
 	api := domain.ComponentHealth{
 		Name:    "api",
-		Status:  domain.StatusOK, // reached this code, so it is up by definition
+		Status:  domain.HealthOK, // reached this code, so it is up by definition
 		Version: s.build.Version(),
 	}
 

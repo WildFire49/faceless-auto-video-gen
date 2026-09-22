@@ -21,4 +21,14 @@ var (
 	// state machine does not permit -- for example approving Gate C before
 	// Gate B. This is the error that makes gate-skipping impossible.
 	ErrIllegalTransition = errors.New("illegal state transition")
+
+	// ErrValidation means the request was well formed but its contents are
+	// not acceptable -- a rejection with no note, a priority out of range.
+	// Distinct from ErrIllegalTransition, which is about system state rather
+	// than about what the caller supplied.
+	ErrValidation = errors.New("validation failed")
+
+	// ErrAlreadyExists means an id is taken. Adding the same topic twice is a
+	// mistake worth reporting rather than silently merging.
+	ErrAlreadyExists = errors.New("already exists")
 )

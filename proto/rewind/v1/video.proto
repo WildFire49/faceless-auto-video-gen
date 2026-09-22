@@ -1,0 +1,208 @@
+syntax = "proto3";
+
+package rewind.v1;
+
+// VideoService is the dashboard's view of the pipeline: the queue, each
+// video's state, and the six human review gates.
+//
+// Served by Go over Connect (JSON over HTTP) because browsers cannot speak
+// native gRPC. The same operations are available from the `rewind` CLI, and
+// both go through the identical service layer -- there is no second code path
+// that could enforce different rules.
+service VideoService {
+  // AddVideo queues a new topic.
+  rpc AddVideo(AddVideoRequest) returns (AddVideoResponse);
+
+  // ListVideos returns the queue, newest-relevant first.
+  rpc ListVideos(ListVideosRequest) returns (ListVideosResponse);
+
+  // GetVideo returns one video.
+  rpc GetVideo(GetVideoRequest) returns (GetVideoResponse);
+
+  // ApproveGate records a human approval and advances the video.
+  //
+  // This is the ONLY way a video crosses a gate. Ordinary pipeline
+  // transitions physically cannot produce a gate-crossing state change, so a
+  // gate cannot be skipped even by a buggy step (SPEC.md 2.2).
+  rpc ApproveGate(ApproveGateRequest) returns (ApproveGateResponse);
+
+  // RejectGate sends a video back to an earlier state with a note.
+  rpc RejectGate(RejectGateRequest) returns (RejectGateResponse);
+
+  // RetryVideo resumes a video that failed.
+  rpc RetryVideo(RetryVideoRequest) returns (RetryVideoResponse);
+
+  // ListReviewLog returns the human-decision history for one video. This log
+  // is the project's proof of human creative involvement (SPEC.md 8.4).
+  rpc ListReviewLog(ListReviewLogRequest) returns (ListReviewLogResponse);
+}
+
+// VideoStatus mirrors the state machine in SPEC.md 2.3.
+//
+// Names are explicit rather than clever: the wire value is what appears in the
+// database, the CLI and the dashboard, so it has to read well everywhere.
+enum VideoStatus {
+  VIDEO_STATUS_UNSPECIFIED = 0;
+
+  VIDEO_STATUS_QUEUED = 1;
+
+  // Module 2 -- research, then Gate A
+  VIDEO_STATUS_RESEARCHING = 2;
+  VIDEO_STATUS_FACTS_READY = 3;
+  VIDEO_STATUS_FACTS_APPROVED = 4;
+
+  // Module 3 -- relevance, then Gate B
+  VIDEO_STATUS_FINDING_REFS = 5;
+  VIDEO_STATUS_REFS_READY = 6;
+  VIDEO_STATUS_REFS_APPROVED = 7;
+
+  // Module 4 -- script, then Gate C
+  VIDEO_STATUS_SCRIPTING = 8;
+  VIDEO_STATUS_SCRIPT_READY = 9;
+  VIDEO_STATUS_SCRIPT_APPROVED = 10;
+
+  // Module 5 -- voice, then Gate D
+  VIDEO_STATUS_VOICING = 11;
+  VIDEO_STATUS_VOICE_READY = 12;
+  VIDEO_STATUS_VOICE_APPROVED = 13;
+
+  // Module 6 -- visuals, then Gate E
+  VIDEO_STATUS_IMAGING = 14;
+  VIDEO_STATUS_STORYBOARD_READY = 15;
+  VIDEO_STATUS_STORYBOARD_APPROVED = 16;
+
+  // Module 9 -- render, then Gate F
+  VIDEO_STATUS_RENDERING = 17;
+  VIDEO_STATUS_RENDER_READY = 18;
+  VIDEO_STATUS_FINAL_APPROVED = 19;
+
+  // Module 10 -- publish. Always private; a human publishes manually.
+  VIDEO_STATUS_UPLOADING = 20;
+  VIDEO_STATUS_UPLOADED_PRIVATE = 21;
+  VIDEO_STATUS_PUBLISHED = 22;
+
+  // Module 11 -- analytics
+  VIDEO_STATUS_ANALYTICS_COLLECTED = 23;
+
+  // A step failed. `error` carries the message; RetryVideo resumes.
+  VIDEO_STATUS_ERROR = 24;
+}
+
+// Gate identifies one of the six human review points (SPEC.md 2.2).
+enum Gate {
+  GATE_UNSPECIFIED = 0;
+  GATE_A_FACTS = 1;
+  GATE_B_REFERENCES = 2;
+  GATE_C_SCRIPT = 3;
+  GATE_D_VOICE = 4;
+  GATE_E_STORYBOARD = 5;
+  GATE_F_FINAL = 6;
+}
+
+message Video {
+  string id = 1; // slug, e.g. "computer-mouse"
+  string topic = 2; // as typed, e.g. "computer mouse"
+  VideoStatus status = 3;
+  // 1 is highest, 5 lowest, 3 the default.
+  int32 priority = 4;
+  string notes = 5;
+  string created_at = 6; // RFC 3339
+  string updated_at = 7; // RFC 3339
+
+  // Set when a gate sent this video back; cleared once it moves forward again.
+  VideoStatus rejected_to = 8;
+  string reject_note = 9;
+
+  // Set when status is ERROR.
+  string error = 10;
+  // The status to resume from on retry.
+  VideoStatus retry_from = 11;
+
+  string yt_video_id = 12;
+  string published_at = 13;
+
+  // Derived, so every client agrees rather than each recomputing it.
+  Gate awaiting_gate = 14; // GATE_UNSPECIFIED when not waiting on a human
+  bool is_terminal = 15; // nothing further will happen on its own
+}
+
+message AddVideoRequest {
+  // Free text, e.g. "computer mouse". The id is derived from it.
+  string topic = 1;
+  int32 priority = 2; // 0 means use the default
+  string notes = 3;
+}
+message AddVideoResponse {
+  Video video = 1;
+}
+
+message ListVideosRequest {
+  // When true, return only videos waiting on a human decision.
+  bool needs_review_only = 1;
+  // Optional status filter; empty means all.
+  repeated VideoStatus statuses = 2;
+}
+message ListVideosResponse {
+  repeated Video videos = 1;
+}
+
+message GetVideoRequest {
+  string video_id = 1;
+}
+message GetVideoResponse {
+  Video video = 1;
+}
+
+message ApproveGateRequest {
+  string video_id = 1;
+  // The gate being approved. Required, and must match the video's current
+  // state: naming the wrong gate is rejected rather than guessed at, so a
+  // stale browser tab cannot approve something the human is not looking at.
+  Gate gate = 2;
+  // Optional note recorded in the review log.
+  string note = 3;
+}
+message ApproveGateResponse {
+  Video video = 1;
+}
+
+message RejectGateRequest {
+  string video_id = 1;
+  Gate gate = 2;
+  // Where to send the video back to. Must be an earlier state.
+  VideoStatus back_to = 3;
+  // Why. Required: a rejection with no reason is useless to the person who
+  // picks the video up later, including you next week.
+  string note = 4;
+}
+message RejectGateResponse {
+  Video video = 1;
+}
+
+message RetryVideoRequest {
+  string video_id = 1;
+}
+message RetryVideoResponse {
+  Video video = 1;
+}
+
+message ListReviewLogRequest {
+  string video_id = 1;
+}
+message ListReviewLogResponse {
+  repeated ReviewLogEntry entries = 1;
+}
+
+// ReviewLogEntry is one human decision. Append-only.
+message ReviewLogEntry {
+  int64 id = 1;
+  string video_id = 2;
+  string at = 3; // RFC 3339
+  Gate gate = 4;
+  string action = 5; // "approve" | "reject" | "edit" | "retry"
+  VideoStatus from_status = 6;
+  VideoStatus to_status = 7;
+  string note = 8;
+  // JSON describing what the human changed, for edits.
+  string diff = 9;
+}
