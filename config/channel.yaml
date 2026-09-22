@@ -43,13 +43,28 @@ llm:
   # The model gets one chunk at a time; larger chunks lose facts in the middle.
   max_chunk_chars: 6000
 
+# WHAT KIND OF VIDEO THIS CHANNEL MAKES.
+#
+# One line. The format owns what an item is, the prompts that extract it, which
+# values are implausible, how items are grouped for variety, and the review
+# thresholds at its gate. Everything else in the pipeline -- fetching, the
+# evidence verifier, the gates, the dashboard -- is unchanged by this choice.
+#
+# Shipped: history_timeline, myth_vs_fact
+# Adding one is a single file in ai/rewind_ai/formats/providers/ (SPEC.md 14.2).
+content:
+  format: history_timeline
+
 research:
   # v1 sources (SPEC.md 5.2). Order matters: earlier sources win on conflict.
   sources: [wikipedia, user_url]
-  # Gate A will not open with fewer than this many verified facts.
-  min_facts: 8
-  # How many distinct eras the facts must span.
-  min_eras: 4
+  # Item counts and grouping are NOT here -- they belong to the content format,
+  # because they differ by kind of video. See content.format above.
+  #
+  # Ceiling on what reaches a human. A real run produced 141 facts, which
+  # passes every threshold and is a miserable thing to review; the
+  # best-verified survive.
+  max_items: 40
   # An extracted evidence sentence must match the source text at least this
   # closely to survive. Below 1.0 to tolerate whitespace and unicode
   # normalisation, but high enough that a reworded "quote" is rejected.

@@ -15,6 +15,7 @@ from pathlib import Path
 from rewind_ai.core.errors import ValidationFailedError
 from rewind_ai.core.io import write_json_atomic
 from rewind_ai.core.logging import get_logger
+from rewind_ai.formats.base import ContentFormat, RawItem
 from rewind_ai.llm.base import LLM
 from rewind_ai.research.base import Document, Fact, ResearchResult, SourceFetcher
 from rewind_ai.research.extractor import extract_from_document
@@ -29,12 +30,19 @@ ProgressFn = Callable[[str, float], None]
 
 @dataclass(frozen=True, slots=True)
 class ResearchConfig:
-    """Research settings from ``config/channel.yaml``."""
+    """Research settings from ``config/channel.yaml``.
 
-    min_facts: int = 8
-    min_eras: int = 4
+    Note what is NOT here: how many items a gate needs, and how they are
+    grouped. Those belong to the ContentFormat, because they differ by kind of
+    video -- a timeline wants eight items across four eras, a myth-buster five
+    across three domains.
+    """
+
     evidence_match_threshold: float = 0.90
     max_chunk_chars: int = 6000
+    #: Hard ceiling on items handed to a human. A reviewer scrolling 141 rows
+    #: is a worse reviewer; the best-verified survive.
+    max_items: int = 40
 
 
 class ResearchService:
@@ -45,11 +53,13 @@ class ResearchService:
         *,
         fetchers: list[SourceFetcher],
         llm: LLM,
+        content_format: ContentFormat,
         config: ResearchConfig,
         projects_dir: Path,
     ) -> None:
         self._fetchers = fetchers
         self._llm = llm
+        self._format = content_format
         self._config = config
         self._projects_dir = projects_dir
 
@@ -71,7 +81,8 @@ class ResearchService:
                 instead.
         """
         report = progress or (lambda _stage, _pct: None)
-        required = min_facts if min_facts and min_facts > 0 else self._config.min_facts
+        rules = self._format.gate_rules()
+        required = min_facts if min_facts and min_facts > 0 else rules.min_items
 
         # ---- 1. fetch -------------------------------------------------------
         documents = self._fetch(topic, extra_urls, report)
@@ -104,6 +115,7 @@ class ResearchService:
         # ---- 4. tidy --------------------------------------------------------
         report("sorting and de-duplicating", 0.9)
         facts = _sort_and_deduplicate(verified)
+        facts = _cap(facts, self._config.max_items)
         _assign_ids(facts)
         _flag_conflicts(facts)
 
@@ -118,7 +130,15 @@ class ResearchService:
 
         # ---- 5. write -------------------------------------------------------
         report("writing facts.json", 0.97)
-        path = self._write(video_id, topic, facts, documents)
+        path = self._write(
+            video_id,
+            topic,
+            facts,
+            documents,
+            extracted=len(candidates),
+            rejected=len(rejections),
+            rejections=rejections,
+        )
 
         log.info(
             "fact sheet built",
@@ -133,6 +153,10 @@ class ResearchService:
             facts=facts,
             documents=documents,
             facts_json_path=str(path),
+            format_name=self._format.name,
+            group_noun=rules.group_noun,
+            min_items=rules.min_items,
+            min_groups=rules.min_groups,
             candidates_extracted=len(candidates),
             candidates_rejected=len(rejections),
             rejections=rejections,
@@ -168,6 +192,7 @@ class ResearchService:
             candidates.extend(
                 extract_from_document(
                     self._llm,
+                    self._format,
                     topic,
                     document,
                     max_chunk_chars=self._config.max_chunk_chars,
@@ -190,6 +215,23 @@ class ResearchService:
         rejections: list[str] = []
 
         for fact in candidates:
+            # Cheapest check first, and a different kind of wrong: the claim
+            # may be true and sourced but still unusable FOR THIS FORMAT.
+            problem = self._format.implausible_reason(
+                RawItem(
+                    label=fact.label,
+                    sort_key=fact.sort_key,
+                    context=fact.context,
+                    claim=fact.claim,
+                    evidence=fact.evidence,
+                    extra=fact.extra,
+                )
+            )
+            if problem:
+                rejections.append(f"{fact.label}: {problem}")
+                log.info("rejected implausible item", label=fact.label, reason=problem)
+                continue
+
             result = verify_evidence(
                 fact.evidence,
                 sources,
@@ -197,10 +239,10 @@ class ResearchService:
             )
 
             if not result.verified:
-                rejections.append(f"{fact.year_label}: {result.reason}")
+                rejections.append(f"{fact.label}: {result.reason}")
                 log.info(
-                    "rejected unverifiable fact",
-                    year=fact.year_label,
+                    "rejected unverifiable item",
+                    label=fact.label,
                     claim=fact.claim[:80],
                     score=round(result.score, 3),
                 )
@@ -222,18 +264,40 @@ class ResearchService:
         return verified, rejections
 
     def _write(
-        self, video_id: str, topic: str, facts: list[Fact], documents: list[Document]
+        self,
+        video_id: str,
+        topic: str,
+        facts: list[Fact],
+        documents: list[Document],
+        *,
+        extracted: int,
+        rejected: int,
+        rejections: list[str],
     ) -> Path:
         path = self._projects_dir / video_id / "facts.json"
+        rules = self._format.gate_rules()
 
         payload = {
             "topic": topic,
+            # The format and its rules travel WITH the sheet, so the Go gate
+            # machinery can enforce a format's thresholds without knowing which
+            # formats exist. Adding a format never touches Go.
+            "format": self._format.name,
+            "group_noun": rules.group_noun,
+            "min_items": rules.min_items,
+            "min_groups": rules.min_groups,
+            # These used to be computed and discarded, which silently broke the
+            # one objective measure of how much a model invents.
+            "candidates_extracted": extracted,
+            "candidates_rejected": rejected,
+            "rejections": rejections,
             "facts": [
                 {
                     "id": f.id,
-                    "year_label": f.year_label,
-                    "sort_year": f.sort_year,
-                    "place": f.place,
+                    "label": f.label,
+                    "sort_key": f.sort_key,
+                    "context": f.context,
+                    "group": f.group,
                     "claim": f.claim,
                     "evidence": f.evidence,
                     "source_url": f.source_url,
@@ -242,6 +306,7 @@ class ResearchService:
                     "conflict": f.conflict,
                     "approved": f.approved,
                     "match_score": round(f.match_score, 4),
+                    "added_by_human": False,
                 }
                 for f in facts
             ],
@@ -271,7 +336,7 @@ def _sort_and_deduplicate(facts: list[Fact]) -> list[Fact]:
     best-verified copy is better than showing a reviewer the same fact three
     times.
     """
-    facts.sort(key=lambda f: (f.sort_year, f.year_label))
+    facts.sort(key=lambda f: (f.sort_key, f.label))
 
     kept: list[Fact] = []
     for fact in facts:
@@ -291,8 +356,8 @@ def _sort_and_deduplicate(facts: list[Fact]) -> list[Fact]:
 
 
 def _is_duplicate(a: Fact, b: Fact) -> bool:
-    """Two facts are duplicates if they share a year and say the same thing."""
-    if a.sort_year != b.sort_year:
+    """Two items are duplicates if they sort the same and say the same thing."""
+    if a.sort_key != b.sort_key:
         return False
 
     a_words = set(a.claim.lower().split())
@@ -302,6 +367,21 @@ def _is_duplicate(a: Fact, b: Fact) -> bool:
 
     overlap = len(a_words & b_words) / min(len(a_words), len(b_words))
     return overlap >= 0.6
+
+
+def _cap(facts: list[Fact], limit: int) -> list[Fact]:
+    """Keep at most ``limit`` items, the best-verified ones.
+
+    A real run produced 141 facts, which passes every threshold and is a
+    miserable thing to review. Trimming by match score keeps the most
+    defensible, then restores the format's ordering.
+    """
+    if limit <= 0 or len(facts) <= limit:
+        return facts
+
+    kept = sorted(facts, key=lambda f: f.match_score, reverse=True)[:limit]
+    kept.sort(key=lambda f: (f.sort_key, f.label))
+    return kept
 
 
 def _assign_ids(facts: list[Fact]) -> None:
@@ -321,7 +401,7 @@ def _flag_conflicts(facts: list[Fact]) -> None:
         for other in facts[i + 1 :]:
             if fact.source_url == other.source_url:
                 continue
-            if fact.sort_year == other.sort_year:
+            if fact.sort_key == other.sort_key:
                 continue
             if _is_same_event(fact, other):
                 fact.conflict = True

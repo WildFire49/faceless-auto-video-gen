@@ -123,6 +123,21 @@ interface it implements.
 M2 — Research & Gate A: **COMPLETE**, awaiting review. Do not start M3 without an explicit
 "approved, start M3" from the user.
 
+### Invariant M2b established — content format is configurable
+**"History of an everyday object" is ONE format, not the product.** The product is
+evidence-verified short-form video. A ContentFormat owns what an item is, the prompts
+that extract it, which values are implausible, how items are grouped, and its gate
+thresholds. Adding a format is one file in `ai/rewind_ai/formats/providers/` plus one
+config value — **Go is never touched**, because each fact sheet carries the gate rules
+its own format declared.
+
+What is NOT the format's to vary: the evidence verifier, and the requirement that every
+item carry a verbatim `evidence` string. `tests/test_formats.py` asserts both against
+every registered format, so a new format cannot quietly opt out.
+
+Field names are format-neutral: `label`, `sort_key`, `context`, `group`. Never
+reintroduce `year_label` or `sort_year` — they presume a timeline.
+
 ### Invariant M2 established — do not weaken it
 **The LLM is never the source of a fact.** `ai/rewind_ai/research/verifier.py` checks every
 extracted sentence against the fetched source TWO ways, and both are load-bearing:

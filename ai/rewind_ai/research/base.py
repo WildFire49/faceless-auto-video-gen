@@ -6,7 +6,7 @@ LAYER 2 (module base) of SPEC.md 14.1.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,19 +26,30 @@ class Document:
 
 @dataclass(slots=True)
 class Fact:
-    """One timeline entry (SPEC.md 5.2).
+    """One verified item (SPEC.md 5.2).
+
+    Format-neutral by design: for a timeline ``label`` is a year and
+    ``sort_key`` orders chronologically; for a myth-buster ``label`` is the
+    belief and ``sort_key`` is how surprising the correction is. What never
+    varies is the pairing of ``claim`` with the ``evidence`` that supports it.
 
     Mutable, unlike Document: ids are assigned and verification results are
     attached after extraction.
     """
 
-    year_label: str
-    sort_year: int
-    place: str
+    label: str
+    sort_key: int
+    context: str
     claim: str
     evidence: str
     source_url: str
     source_title: str = ""
+
+    #: Variety bucket, computed by the format. Gate A requires the approved
+    #: items to span several distinct groups.
+    group: str = ""
+    #: Fields a format wanted that the generic pipeline knows nothing about.
+    extra: dict[str, Any] = field(default_factory=dict)
 
     id: str = ""
     confidence: str = "low"
@@ -55,6 +66,11 @@ class ResearchResult:
     facts: list[Fact]
     documents: list[Document]
     facts_json_path: str
+    #: Which format produced this sheet, and how its variety is described.
+    format_name: str = ""
+    group_noun: str = "group"
+    min_items: int = 8
+    min_groups: int = 4
     #: How many the model proposed, and how many the verifier threw out.
     candidates_extracted: int = 0
     candidates_rejected: int = 0

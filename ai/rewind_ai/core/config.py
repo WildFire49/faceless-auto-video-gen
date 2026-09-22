@@ -64,13 +64,26 @@ class LLMSettings:
 
 @dataclass(frozen=True, slots=True)
 class ResearchSettings:
-    """The ``research:`` block of ``config/channel.yaml``."""
+    """The ``research:`` block of ``config/channel.yaml``.
+
+    Item counts and grouping are NOT here: they belong to the content format,
+    because they differ by kind of video.
+    """
 
     sources: list[str] = field(default_factory=lambda: ["wikipedia", "user_url"])
-    min_facts: int = 8
-    min_eras: int = 4
     evidence_match_threshold: float = 0.90
     max_articles: int = 3
+    max_items: int = 40
+
+
+@dataclass(frozen=True, slots=True)
+class ContentSettings:
+    """The ``content:`` block of ``config/channel.yaml``.
+
+    One line decides what kind of video this channel makes.
+    """
+
+    format: str = "history_timeline"
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,6 +95,7 @@ class Settings:
     config_dir: Path
     llm: LLMSettings = field(default_factory=LLMSettings)
     research: ResearchSettings = field(default_factory=ResearchSettings)
+    content: ContentSettings = field(default_factory=ContentSettings)
 
 
 def find_config_dir(start: Path | None = None) -> Path:
@@ -129,7 +143,15 @@ def load(config_dir: Path | None = None) -> Settings:
         config_dir=directory,
         llm=_llm_settings(channel),
         research=_research_settings(channel),
+        content=_content_settings(channel),
     )
+
+
+def _content_settings(channel: dict[str, Any]) -> ContentSettings:
+    raw = channel.get("content")
+    if not isinstance(raw, dict):
+        return ContentSettings()
+    return ContentSettings(format=str(raw.get("format", ContentSettings().format)))
 
 
 def _llm_settings(channel: dict[str, Any]) -> LLMSettings:
@@ -159,12 +181,11 @@ def _research_settings(channel: dict[str, Any]) -> ResearchSettings:
     sources = raw.get("sources")
     return ResearchSettings(
         sources=[str(s) for s in sources] if isinstance(sources, list) else defaults.sources,
-        min_facts=int(raw.get("min_facts", defaults.min_facts)),
-        min_eras=int(raw.get("min_eras", defaults.min_eras)),
         evidence_match_threshold=float(
             raw.get("evidence_match_threshold", defaults.evidence_match_threshold)
         ),
         max_articles=int(raw.get("max_articles", defaults.max_articles)),
+        max_items=int(raw.get("max_items", defaults.max_items)),
     )
 
 

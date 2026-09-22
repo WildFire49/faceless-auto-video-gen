@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file rewind/v1/research.proto.
  */
 export const file_rewind_v1_research: GenFile = /*@__PURE__*/
-  fileDesc("ChhyZXdpbmQvdjEvcmVzZWFyY2gucHJvdG8SCXJld2luZC52MSJfChVCdWlsZEZhY3RTaGVldFJlcXVlc3QSEAoIdmlkZW9faWQYASABKAkSDQoFdG9waWMYAiABKAkSEgoKZXh0cmFfdXJscxgDIAMoCRIRCgltaW5fZmFjdHMYBCABKAUimQEKFkJ1aWxkRmFjdFNoZWV0UmVzcG9uc2USJwoIcHJvZ3Jlc3MYASABKAsyEy5yZXdpbmQudjEuUHJvZ3Jlc3NIABImCgZyZXN1bHQYAiABKAsyFC5yZXdpbmQudjEuRmFjdFNoZWV0SAASJQoHZmFpbHVyZRgDIAEoCzISLnJld2luZC52MS5GYWlsdXJlSABCBwoFZXZlbnQi4AEKBEZhY3QSCgoCaWQYASABKAkSEgoKeWVhcl9sYWJlbBgCIAEoCRIRCglzb3J0X3llYXIYAyABKAUSDQoFcGxhY2UYBCABKAkSDQoFY2xhaW0YBSABKAkSEAoIZXZpZGVuY2UYBiABKAkSEgoKc291cmNlX3VybBgHIAEoCRIUCgxzb3VyY2VfdGl0bGUYCCABKAkSEgoKY29uZmlkZW5jZRgJIAEoCRIQCghjb25mbGljdBgKIAEoCBIQCghhcHByb3ZlZBgLIAEoCBITCgttYXRjaF9zY29yZRgMIAEoASJRCg5Tb3VyY2VEb2N1bWVudBILCgN1cmwYASABKAkSDQoFdGl0bGUYAiABKAkSDwoHZmV0Y2hlchgDIAEoCRISCgpjaGFyX2NvdW50GAQgASgFIroBCglGYWN0U2hlZXQSDQoFdG9waWMYASABKAkSHgoFZmFjdHMYAiADKAsyDy5yZXdpbmQudjEuRmFjdBIqCgdzb3VyY2VzGAMgAygLMhkucmV3aW5kLnYxLlNvdXJjZURvY3VtZW50EhcKD2ZhY3RzX2pzb25fcGF0aBgEIAEoCRIcChRjYW5kaWRhdGVzX2V4dHJhY3RlZBgFIAEoBRIbChNjYW5kaWRhdGVzX3JlamVjdGVkGAYgASgFMmoKD1Jlc2VhcmNoU2VydmljZRJXCg5CdWlsZEZhY3RTaGVldBIgLnJld2luZC52MS5CdWlsZEZhY3RTaGVldFJlcXVlc3QaIS5yZXdpbmQudjEuQnVpbGRGYWN0U2hlZXRSZXNwb25zZTABYgZwcm90bzM", [file_rewind_v1_common]);
+  fileDesc("ChhyZXdpbmQvdjEvcmVzZWFyY2gucHJvdG8SCXJld2luZC52MSJfChVCdWlsZEZhY3RTaGVldFJlcXVlc3QSEAoIdmlkZW9faWQYASABKAkSDQoFdG9waWMYAiABKAkSEgoKZXh0cmFfdXJscxgDIAMoCRIRCgltaW5fZmFjdHMYBCABKAUimQEKFkJ1aWxkRmFjdFNoZWV0UmVzcG9uc2USJwoIcHJvZ3Jlc3MYASABKAsyEy5yZXdpbmQudjEuUHJvZ3Jlc3NIABImCgZyZXN1bHQYAiABKAsyFC5yZXdpbmQudjEuRmFjdFNoZWV0SAASJQoHZmFpbHVyZRgDIAEoCzISLnJld2luZC52MS5GYWlsdXJlSABCBwoFZXZlbnQigwIKBEZhY3QSCgoCaWQYASABKAkSDQoFbGFiZWwYAiABKAkSEAoIc29ydF9rZXkYAyABKAMSDwoHY29udGV4dBgEIAEoCRINCgVjbGFpbRgFIAEoCRIQCghldmlkZW5jZRgGIAEoCRISCgpzb3VyY2VfdXJsGAcgASgJEhQKDHNvdXJjZV90aXRsZRgIIAEoCRISCgpjb25maWRlbmNlGAkgASgJEhAKCGNvbmZsaWN0GAogASgIEhAKCGFwcHJvdmVkGAsgASgIEhMKC21hdGNoX3Njb3JlGAwgASgBEg0KBWdyb3VwGA0gASgJEhYKDmFkZGVkX2J5X2h1bWFuGA4gASgIIlEKDlNvdXJjZURvY3VtZW50EgsKA3VybBgBIAEoCRINCgV0aXRsZRgCIAEoCRIPCgdmZXRjaGVyGAMgASgJEhIKCmNoYXJfY291bnQYBCABKAUimQIKCUZhY3RTaGVldBINCgV0b3BpYxgBIAEoCRIeCgVmYWN0cxgCIAMoCzIPLnJld2luZC52MS5GYWN0EioKB3NvdXJjZXMYAyADKAsyGS5yZXdpbmQudjEuU291cmNlRG9jdW1lbnQSFwoPZmFjdHNfanNvbl9wYXRoGAQgASgJEhwKFGNhbmRpZGF0ZXNfZXh0cmFjdGVkGAUgASgFEhsKE2NhbmRpZGF0ZXNfcmVqZWN0ZWQYBiABKAUSEgoKcmVqZWN0aW9ucxgJIAMoCRIOCgZmb3JtYXQYByABKAkSEgoKZ3JvdXBfbm91bhgIIAEoCRIRCgltaW5faXRlbXMYCiABKAUSEgoKbWluX2dyb3VwcxgLIAEoBTJqCg9SZXNlYXJjaFNlcnZpY2USVwoOQnVpbGRGYWN0U2hlZXQSIC5yZXdpbmQudjEuQnVpbGRGYWN0U2hlZXRSZXF1ZXN0GiEucmV3aW5kLnYxLkJ1aWxkRmFjdFNoZWV0UmVzcG9uc2UwAWIGcHJvdG8z", [file_rewind_v1_common]);
 
 /**
  * @generated from message rewind.v1.BuildFactSheetRequest
@@ -92,7 +92,12 @@ export const BuildFactSheetResponseSchema: GenMessage<BuildFactSheetResponse> = 
   messageDesc(file_rewind_v1_research, 1);
 
 /**
- * Fact is one timeline entry (SPEC.md 5.2).
+ * Fact is one verified item (SPEC.md 5.2).
+ *
+ * The field names are format-neutral on purpose. For a timeline, `label` is a
+ * year and `sort_key` orders chronologically; for a myth-buster, `label` is
+ * the belief and `sort_key` is how surprising the correction is. What never
+ * varies is the pairing of `claim` with the `evidence` that supports it.
  *
  * @generated from message rewind.v1.Fact
  */
@@ -105,23 +110,34 @@ export type Fact = Message<"rewind.v1.Fact"> & {
   id: string;
 
   /**
-   * How the year is spoken, e.g. "~9,000 years ago" or "1882".
+   * What the narrator says to introduce this item.
+   * Timeline: "~9,000 years ago". Myth-buster: "You need 8 hours of sleep".
    *
-   * @generated from field: string year_label = 2;
+   * @generated from field: string label = 2;
    */
-  yearLabel: string;
+  label: string;
 
   /**
-   * Sortable year; negative for BC. -7000 means 7000 BC.
+   * Orders the items. Meaning is the format's: a year (negative for BC), a
+   * rank, a step number, a surprise rating.
    *
-   * @generated from field: int32 sort_year = 3;
+   * int64, not int32: asked about "iron", a model correctly returns the
+   * formation of the Earth's core at -4,600,000,000, which overflows int32 and
+   * used to crash serialization AFTER all the research work was done. Such a
+   * value is rejected on plausibility grounds by the format -- but that is a
+   * decision for the pipeline to make and report, never a failure mode of the
+   * wire format.
+   *
+   * @generated from field: int64 sort_key = 3;
    */
-  sortYear: number;
+  sortKey: bigint;
 
   /**
-   * @generated from field: string place = 4;
+   * Where or in what setting. Timeline: "Oregon, USA". Myth-buster: "health".
+   *
+   * @generated from field: string context = 4;
    */
-  place: string;
+  context: string;
 
   /**
    * The claim, in the narrator's words.
@@ -179,6 +195,25 @@ export type Fact = Message<"rewind.v1.Fact"> & {
    * @generated from field: double match_score = 12;
    */
   matchScore: number;
+
+  /**
+   * The variety bucket this item falls in, computed by the format.
+   * Timeline: "industrial". Myth-buster: "health". Gate A requires the
+   * approved items to span several distinct groups, so a video is not eight
+   * variations on one idea.
+   *
+   * @generated from field: string group = 13;
+   */
+  group: string;
+
+  /**
+   * True for items a human typed in themselves at the gate. Those skip the
+   * evidence verifier -- a person citing a book is the authority the verifier
+   * substitutes for -- so it matters that they stay distinguishable.
+   *
+   * @generated from field: bool added_by_human = 14;
+   */
+  addedByHuman: boolean;
 };
 
 /**
@@ -249,9 +284,10 @@ export type FactSheet = Message<"rewind.v1.FactSheet"> & {
   factsJsonPath: string;
 
   /**
-   * How many candidates the LLM proposed and how many survived verification.
-   * Shown at Gate A: a large gap is a signal the model is drifting, and worth
-   * knowing before you trust what is left.
+   * How many candidates the LLM proposed and how many were thrown out.
+   * Shown at Gate A: a large gap is a measurement of the MODEL, not of the
+   * topic -- the one objective signal of how much a given model invents on
+   * this exact task.
    *
    * @generated from field: int32 candidates_extracted = 5;
    */
@@ -261,6 +297,42 @@ export type FactSheet = Message<"rewind.v1.FactSheet"> & {
    * @generated from field: int32 candidates_rejected = 6;
    */
   candidatesRejected: number;
+
+  /**
+   * Why each one was thrown out, so the number is inspectable rather than
+   * merely alarming.
+   *
+   * @generated from field: repeated string rejections = 9;
+   */
+  rejections: string[];
+
+  /**
+   * Which content format produced this sheet, and the words to describe its
+   * variety requirement. Carried in the sheet so the gate machinery can
+   * enforce a format's rules without knowing the format exists.
+   *
+   * @generated from field: string format = 7;
+   */
+  format: string;
+
+  /**
+   * "era", "domain", "category"
+   *
+   * @generated from field: string group_noun = 8;
+   */
+  groupNoun: string;
+
+  /**
+   * The thresholds this sheet's format requires before its gate can open.
+   *
+   * @generated from field: int32 min_items = 10;
+   */
+  minItems: number;
+
+  /**
+   * @generated from field: int32 min_groups = 11;
+   */
+  minGroups: number;
 };
 
 /**
@@ -278,6 +350,10 @@ export const FactSheetSchema: GenMessage<FactSheet> = /*@__PURE__*/
  * carry the exact sentence it came from. A verifier then checks that sentence
  * really appears in the fetched source, and drops anything that does not.
  * That is what makes hallucinated dates impossible rather than unlikely.
+ * The format -- timeline, myth-buster, ranked list -- is chosen in
+ * config/channel.yaml and owned entirely by the worker. Go never needs to know
+ * which formats exist: the fact sheet declares its own review thresholds, so
+ * the gate machinery works for a format written after this comment.
  *
  * @generated from service rewind.v1.ResearchService
  */

@@ -4,6 +4,11 @@ LAYER 2 of SPEC.md 14.1: pure functions, no I/O, no LLM. Heavily tested,
 because this is the single component standing between the model and a
 hallucinated date reaching a human.
 
+This module is FORMAT-AGNOSTIC and must stay that way. Whether the video is a
+timeline, a ranked list or a myth-buster, "the quoted sentence really appears
+in the source" means exactly the same thing. Plausibility -- which values make
+sense for a given kind of video -- belongs to the ContentFormat instead.
+
 THE RULE (CLAUDE.md, SPEC.md 5.2): the LLM is never the source of a fact. It
 may only point at a sentence in text we fetched. This module checks that the
 sentence it pointed at really is in that text, and drops the fact if not.

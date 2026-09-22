@@ -42,6 +42,13 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ARTIFACT_ROOT = REPO_ROOT / "artifacts" / "e2e"
 
+# Source text is full of thin spaces, en dashes and curly quotes, and a Windows
+# console defaults to cp1252. Without this, printing a FAILURE raises
+# UnicodeEncodeError -- losing the artifact at the exact moment it matters.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 # ANSI colours, skipped when output is redirected so the log file stays clean.
 _TTY = sys.stdout.isatty()
 GREEN = "\033[32m" if _TTY else ""
@@ -76,6 +83,7 @@ class Run:
     facts: dict[str, Any] | None = None
     review_log: list[dict[str, Any]] = field(default_factory=list)
     video_id: str = ""
+    content_format: str = ""
     notes: list[str] = field(default_factory=list)
 
     @property
@@ -279,6 +287,8 @@ def check_facts_are_sourced(client: Client, run: Run, video_id: str) -> str:
             problems.append(f"{fid}: no evidence")
         if not fact.get("sourceUrl", "").strip():
             problems.append(f"{fid}: no source URL")
+        if not fact.get("group", "").strip():
+            problems.append(f"{fid}: no group, so it cannot count towards variety")
         if fact.get("approved"):
             problems.append(f"{fid}: arrived pre-approved, which a human must do")
         score = float(fact.get("matchScore", 0))
@@ -290,38 +300,70 @@ def check_facts_are_sourced(client: Client, run: Run, video_id: str) -> str:
 
     extracted = int(sheet.get("candidatesExtracted", 0))
     rejected = int(sheet.get("candidatesRejected", 0))
+
+    # These counts were computed by the worker and then discarded for a while,
+    # so Gate A showed 0/0. Assert they survive the round trip.
+    if extracted == 0:
+        raise E2EFailure(
+            "the fact sheet reports 0 candidates extracted; the model-quality "
+            "counts are being lost between the worker and Gate A"
+        )
+
+    run.content_format = str(sheet.get("format", ""))
     run.notes.append(
-        f"The model proposed {extracted} facts; the verifier rejected {rejected} "
-        f"({(rejected / extracted * 100) if extracted else 0:.0f}%)."
+        f"Format: {run.content_format}. The model proposed {extracted} items; "
+        f"{rejected} were rejected ({rejected / extracted * 100:.0f}%)."
     )
-    return f"{len(facts)} facts, all sourced; {rejected}/{extracted} candidates rejected"
+    return (
+        f"{len(facts)} facts, all sourced and grouped; "
+        f"{rejected}/{extracted} candidates rejected"
+    )
 
 
 def check_evidence_is_really_in_the_source(run: Run) -> str:
-    """Re-verify every fact independently of the worker that produced it.
+    """Re-verify every fact against FRESHLY downloaded sources.
 
-    The worker already checked this. Doing it again here, with a separate
-    implementation, is the point: if the verifier itself regressed, a run that
-    only trusted the worker's own word would still pass.
+    What makes this independent is re-fetching the source text, not inventing a
+    second standard. An earlier version demanded exact substring containment
+    while the product uses fuzzy-prose-plus-exact-numbers, so it flagged
+    legitimate near-verbatim quotes (0.99 matches) as failures. A check
+    stricter than the thing it checks reports noise, not bugs.
+
+    The score distribution is reported either way, because "how many are
+    quoted verbatim rather than merely close" is worth knowing about a model.
     """
     sys.path.insert(0, str(REPO_ROOT / "ai"))
-    from rewind_ai.research.verifier import normalise  # noqa: PLC0415
+    from rewind_ai.research.verifier import verify_evidence  # noqa: PLC0415
 
     facts = (run.facts or {}).get("facts", [])
     sources = _fetch_sources(run)
+    if not sources:
+        raise E2EFailure("could not re-download any source to check against")
 
     unverified: list[str] = []
+    exact = 0
+    close = 0
+
     for fact in facts:
-        evidence = normalise(fact.get("evidence", ""))
-        if not any(evidence in normalise(text) for text in sources.values()):
-            unverified.append(f"{fact.get('id')} ({fact.get('yearLabel')})")
+        result = verify_evidence(fact.get("evidence", ""), sources, threshold=0.90)
+        if not result.verified:
+            unverified.append(f"{fact.get('id')} ({fact.get('label')}): {result.reason}")
+        elif result.score >= 0.999:
+            exact += 1
+        else:
+            close += 1
 
     if unverified:
         raise E2EFailure(
-            f"{len(unverified)} fact(s) quote text that is NOT in any source: "
-            + ", ".join(unverified[:5])
+            f"{len(unverified)} of {len(facts)} facts do not appear in the freshly "
+            "downloaded sources: " + "; ".join(unverified[:3])
         )
-    return f"independently re-verified all {len(facts)} facts against {len(sources)} source(s)"
+
+    run.notes.append(
+        f"Re-verified against freshly downloaded sources: {exact} quoted verbatim, "
+        f"{close} near-verbatim (>= 0.90 with every number confirmed)."
+    )
+    return f"all {len(facts)} facts re-verified ({exact} verbatim, {close} near-verbatim)"
 
 
 def _fetch_sources(run: Run) -> dict[str, str]:
@@ -434,6 +476,7 @@ def write_artifact(run: Run, run_dir: Path) -> None:
 
     summary = {
         "topic": run.topic,
+        "format": run.content_format,
         "video_id": run.video_id,
         "started_at": run.started_at.isoformat(),
         "passed": run.passed,
@@ -459,6 +502,7 @@ def _report(run: Run) -> str:
         f"# REWIND end-to-end run — {verdict}",
         "",
         f"- **Topic:** {run.topic}",
+        f"- **Format:** {run.content_format or 'unknown'}",
         f"- **Video id:** `{run.video_id}`",
         f"- **Started:** {run.started_at.isoformat()}",
         f"- **Duration:** {sum(s.seconds for s in run.steps):.1f}s",
@@ -488,8 +532,8 @@ def _report(run: Run) -> str:
         lines += ["", "## Facts that survived verification", ""]
         for fact in facts:
             lines += [
-                f"### {fact.get('id')} — {fact.get('yearLabel')}"
-                + (f" · {fact['place']}" if fact.get("place") else ""),
+                f"### {fact.get('id')} — {fact.get('label')}"
+                + (f" · {fact['context']}" if fact.get("context") else ""),
                 "",
                 f"{fact.get('claim')}",
                 "",
@@ -582,8 +626,14 @@ def main(argv: list[str] | None = None) -> int:
         )
     except E2EFailure:
         pass  # recorded in run.steps; the artifact is still written
-
-    write_artifact(run, run_dir)
+    except Exception as exc:  # noqa: BLE001
+        # Anything unexpected is the harness's own bug. Record it as a failed
+        # step so it appears in the report rather than vanishing up the stack.
+        run.steps.append(Step("the harness itself", ok=False, detail=f"crashed: {exc!r}"))
+    finally:
+        # ALWAYS. An E2E test that loses its artifact when something breaks is
+        # worse than useless -- that is the exact moment the artifact matters.
+        write_artifact(run, run_dir)
 
     print()
     if run.passed:

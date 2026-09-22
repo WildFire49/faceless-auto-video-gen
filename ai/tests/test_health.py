@@ -110,34 +110,28 @@ def test_version_is_reported() -> None:
 # ---------------------------------------------------------------- registry
 
 
-@pytest.fixture(autouse=True)
-def _clean_registry() -> object:
-    """Isolate registry state between tests."""
-    saved_kinds = {k: list(registry.available(k)) for k in registry.kinds()}
-    yield
-    del saved_kinds  # the real providers re-register on import; nothing to restore
+# These tests register under their OWN kind names rather than clearing the
+# registry. Registration is an import side effect and Python caches modules,
+# so a cleared registry cannot be repopulated -- clearing it here used to
+# break every later test file.
 
 
 def test_register_and_get() -> None:
-    registry.clear()
-
-    @registry.register("voice", "piper")
+    @registry.register("test_voice_a", "piper")
     class Piper:
         pass
 
-    assert registry.get("voice", "piper") is Piper
-    assert registry.available("voice") == ["piper"]
+    assert registry.get("test_voice_a", "piper") is Piper
+    assert registry.available("test_voice_a") == ["piper"]
 
 
 def test_unknown_provider_lists_what_is_available() -> None:
-    registry.clear()
-
-    @registry.register("voice", "chatterbox")
+    @registry.register("test_voice_b", "chatterbox")
     class Chatterbox:
         pass
 
     with pytest.raises(registry.ProviderError) as excinfo:
-        registry.get("voice", "kokoro")
+        registry.get("test_voice_b", "kokoro")
 
     # A typo in a config file should tell you the options, not just that you
     # were wrong.
@@ -145,15 +139,13 @@ def test_unknown_provider_lists_what_is_available() -> None:
 
 
 def test_duplicate_registration_is_rejected() -> None:
-    registry.clear()
-
-    @registry.register("voice", "piper")
+    @registry.register("test_voice_c", "piper")
     class First:
         pass
 
     with pytest.raises(registry.ProviderError):
 
-        @registry.register("voice", "piper")
+        @registry.register("test_voice_c", "piper")
         class Second:
             pass
 

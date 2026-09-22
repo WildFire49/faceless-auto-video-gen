@@ -103,6 +103,18 @@ def load_providers(package: ModuleType) -> None:
         importlib.import_module(f"{package.__name__}.{module.name}")
 
 
-def clear() -> None:
-    """Reset the registry. Test-only; never call this from application code."""
-    _REGISTRY.clear()
+def registered(kind: str, name: str) -> bool:
+    """Whether a provider is registered. For diagnostics and tests."""
+    return name in _REGISTRY.get(kind, {})
+
+
+# There is deliberately NO clear() or reset().
+#
+# Registration is an import side effect, and Python caches modules, so a
+# cleared registry cannot be repopulated by importing the providers again --
+# the decorators simply do not run a second time. A test that cleared it left
+# every LATER test with an empty registry, which surfaced as a baffling
+# failure in an unrelated file.
+#
+# Tests that need their own providers register them under a unique kind
+# instead; the namespace is free, and nothing global is disturbed.

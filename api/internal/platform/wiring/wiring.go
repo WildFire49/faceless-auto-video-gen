@@ -70,10 +70,7 @@ func Build(
 
 	clk := clock.New()
 
-	factsService := service.NewFactsService(
-		factStore, videoRepo, reviewLog, clk,
-		channel.Research.MinFacts, channel.Research.MinEras,
-	)
+	factsService := service.NewFactsService(factStore, videoRepo, reviewLog, clk)
 
 	// Gate A cannot be approved until the fact sheet meets its bar. The rule
 	// itself lives in the domain; this just connects it to the gate.
@@ -99,6 +96,8 @@ func Build(
 
 	// The pipeline. Each milestone from here adds exactly one line.
 	registry := pipeline.NewRegistry()
+	// 0 means "use whatever the content format requires", which the worker
+	// knows and Go does not need to.
 	registry.MustRegister(steps.NewResearch(ai, channel.Research.MinFacts))
 
 	runner := pipeline.NewRunner(registry, videoRepo, jobRepo, db, clk, newJobID, log)

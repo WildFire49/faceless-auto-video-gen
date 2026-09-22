@@ -16,30 +16,24 @@ import (
 // eras they span. Returning a partial answer would let the dashboard show a
 // stale verdict about whether the gate can be approved.
 type FactsService struct {
-	facts    domain.FactStore
-	videos   domain.VideoRepo
-	log      domain.ReviewLog
-	clock    domain.Clock
-	minFacts int
-	minEras  int
+	facts  domain.FactStore
+	videos domain.VideoRepo
+	log    domain.ReviewLog
+	clock  domain.Clock
 }
 
 // NewFactsService wires the service.
+//
+// No thresholds here: each fact sheet carries the gate rules its own content
+// format declared, so this service works unchanged for a format written after
+// it (SPEC.md 14.2).
 func NewFactsService(
 	facts domain.FactStore,
 	videos domain.VideoRepo,
 	log domain.ReviewLog,
 	clock domain.Clock,
-	minFacts, minEras int,
 ) *FactsService {
-	return &FactsService{
-		facts:    facts,
-		videos:   videos,
-		log:      log,
-		clock:    clock,
-		minFacts: minFacts,
-		minEras:  minEras,
-	}
+	return &FactsService{facts: facts, videos: videos, log: log, clock: clock}
 }
 
 // FactsView is everything Gate A needs to render.
@@ -66,7 +60,7 @@ func (s *FactsService) GetFacts(ctx context.Context, videoID string) (*FactsView
 	return &FactsView{
 		Exists:    true,
 		Sheet:     sheet,
-		Readiness: domain.CheckGateA(sheet, s.minFacts, s.minEras),
+		Readiness: domain.CheckGateA(sheet),
 	}, nil
 }
 
@@ -85,7 +79,7 @@ func (s *FactsService) SetApproval(
 		if approved {
 			verb = "approved"
 		}
-		return fmt.Sprintf("%s fact %s (%s)", verb, factID, fact.YearLabel), nil
+		return fmt.Sprintf("%s fact %s (%s)", verb, factID, fact.Label), nil
 	})
 }
 
@@ -114,9 +108,9 @@ func (s *FactsService) ApproveAll(
 func (s *FactsService) UpdateFact(
 	ctx context.Context,
 	videoID, factID string,
-	yearLabel string,
-	sortYear int,
-	place, claim string,
+	label string,
+	sortKey int64,
+	factContext, claim string,
 ) (*FactsView, error) {
 	return s.mutate(ctx, videoID, func(sheet *domain.FactSheet) (string, error) {
 		fact, found := sheet.Find(factID)
@@ -126,19 +120,19 @@ func (s *FactsService) UpdateFact(
 		if strings.TrimSpace(claim) == "" {
 			return "", fmt.Errorf("%w: a claim is required", domain.ErrValidation)
 		}
-		if strings.TrimSpace(yearLabel) == "" {
-			return "", fmt.Errorf("%w: a year label is required", domain.ErrValidation)
+		if strings.TrimSpace(label) == "" {
+			return "", fmt.Errorf("%w: a label is required", domain.ErrValidation)
 		}
 
-		before := fmt.Sprintf("%s | %s", fact.YearLabel, fact.Claim)
+		before := fmt.Sprintf("%s | %s", fact.Label, fact.Claim)
 
-		fact.YearLabel = yearLabel
-		fact.SortYear = sortYear
-		fact.Place = place
+		fact.Label = label
+		fact.SortKey = sortKey
+		fact.Context = factContext
 		fact.Claim = claim
 
 		return fmt.Sprintf("edited fact %s: %q -> %q", factID, before,
-			fmt.Sprintf("%s | %s", yearLabel, claim)), nil
+			fmt.Sprintf("%s | %s", label, claim)), nil
 	})
 }
 
@@ -161,7 +155,7 @@ func (s *FactsService) DeleteFact(
 		removed := sheet.Facts[index]
 		sheet.Facts = append(sheet.Facts[:index], sheet.Facts[index+1:]...)
 
-		note := fmt.Sprintf("deleted fact %s (%s: %s)", factID, removed.YearLabel, removed.Claim)
+		note := fmt.Sprintf("deleted fact %s (%s: %s)", factID, removed.Label, removed.Claim)
 		if reason != "" {
 			note += " — " + reason
 		}
@@ -188,9 +182,16 @@ func (s *FactsService) AddFact(ctx context.Context, videoID string, fact domain.
 			fact.SourceTitle = fact.SourceURL
 		}
 
+		// A human-added fact still needs a group, or it would not count
+		// towards the variety requirement. Without knowing the format, the
+		// honest answer is its own bucket.
+		if fact.Group == "" {
+			fact.Group = "added-by-hand"
+		}
+
 		sheet.Facts = append(sheet.Facts, fact)
 		return fmt.Sprintf("added fact %s (%s: %s) sourced from %s",
-			fact.ID, fact.YearLabel, fact.Claim, fact.SourceURL), nil
+			fact.ID, fact.Label, fact.Claim, fact.SourceURL), nil
 	})
 }
 
@@ -249,6 +250,6 @@ func (s *FactsService) mutate(
 	return &FactsView{
 		Exists:    true,
 		Sheet:     sheet,
-		Readiness: domain.CheckGateA(sheet, s.minFacts, s.minEras),
+		Readiness: domain.CheckGateA(sheet),
 	}, nil
 }

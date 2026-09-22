@@ -38,17 +38,17 @@ export function EditFactDialog({
   onClose: () => void;
   mutations: Mutations;
 }) {
-  const [yearLabel, setYearLabel] = useState('');
-  const [sortYear, setSortYear] = useState(0);
-  const [place, setPlace] = useState('');
+  const [label, setLabel] = useState('');
+  const [sortKey, setSortKey] = useState(0);
+  const [factContext, setFactContext] = useState('');
   const [claim, setClaim] = useState('');
 
   // Reload the form whenever a different fact is opened.
   useEffect(() => {
     if (!fact) return;
-    setYearLabel(fact.yearLabel);
-    setSortYear(fact.sortYear);
-    setPlace(fact.place);
+    setLabel(fact.label);
+    setSortKey(Number(fact.sortKey));
+    setFactContext(fact.context);
     setClaim(fact.claim);
   }, [fact]);
 
@@ -57,7 +57,7 @@ export function EditFactDialog({
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     mutations.updateFact.mutate(
-      { factId: fact.id, yearLabel, sortYear, place, claim },
+      { factId: fact.id, label, sortKey, context: factContext, claim },
       { onSuccess: onClose },
     );
   };
@@ -76,27 +76,27 @@ export function EditFactDialog({
           <Stack direction="row" spacing={2}>
             <TextField
               required
-              label="Year label"
-              helperText="How a narrator says it"
-              value={yearLabel}
-              onChange={(e) => setYearLabel(e.target.value)}
+              label="Label"
+              helperText="What the narrator says first"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
               fullWidth
             />
             <TextField
               required
               type="number"
-              label="Sort year"
-              helperText="Negative for BC"
-              value={sortYear}
-              onChange={(e) => setSortYear(Number(e.target.value))}
+              label="Sort key"
+              helperText="Orders the items"
+              value={sortKey}
+              onChange={(e) => setSortKey(Number(e.target.value))}
               fullWidth
             />
           </Stack>
 
           <TextField
-            label="Place"
-            value={place}
-            onChange={(e) => setPlace(e.target.value)}
+            label="Context"
+            value={factContext}
+            onChange={(e) => setFactContext(e.target.value)}
             fullWidth
           />
 
@@ -135,7 +135,7 @@ export function EditFactDialog({
         <Button
           type="submit"
           variant="contained"
-          disabled={!claim.trim() || !yearLabel.trim() || mutations.updateFact.isPending}
+          disabled={!claim.trim() || !label.trim() || mutations.updateFact.isPending}
         >
           Save
         </Button>

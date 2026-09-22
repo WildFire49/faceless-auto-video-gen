@@ -33,17 +33,17 @@ export function AddFactDialog({
   onClose: () => void;
   mutations: Mutations;
 }) {
-  const [yearLabel, setYearLabel] = useState('');
-  const [sortYear, setSortYear] = useState(0);
-  const [place, setPlace] = useState('');
+  const [label, setLabel] = useState('');
+  const [sortKey, setSortKey] = useState(0);
+  const [factContext, setFactContext] = useState('');
   const [claim, setClaim] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
   const [evidence, setEvidence] = useState('');
 
   const reset = () => {
-    setYearLabel('');
-    setSortYear(0);
-    setPlace('');
+    setLabel('');
+    setSortKey(0);
+    setFactContext('');
     setClaim('');
     setSourceUrl('');
     setEvidence('');
@@ -60,9 +60,9 @@ export function AddFactDialog({
     event.preventDefault();
     mutations.addFact.mutate(
       {
-        yearLabel: yearLabel.trim(),
-        sortYear,
-        place: place.trim(),
+        label: label.trim(),
+        sortKey,
+        context: factContext.trim(),
         claim: claim.trim(),
         sourceUrl: sourceUrl.trim(),
         evidence: evidence.trim(),
@@ -71,7 +71,7 @@ export function AddFactDialog({
     );
   };
 
-  const ready = claim.trim() && yearLabel.trim() && sourceUrl.trim();
+  const ready = claim.trim() && label.trim() && sourceUrl.trim();
 
   return (
     <Dialog
@@ -93,28 +93,29 @@ export function AddFactDialog({
             <TextField
               required
               autoFocus
-              label="Year label"
+              label="Label"
               placeholder="1882"
-              value={yearLabel}
-              onChange={(e) => setYearLabel(e.target.value)}
+              helperText="What the narrator says first"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
               fullWidth
             />
             <TextField
               required
               type="number"
-              label="Sort year"
-              helperText="Negative for BC"
-              value={sortYear}
-              onChange={(e) => setSortYear(Number(e.target.value))}
+              label="Sort key"
+              helperText="Orders the items"
+              value={sortKey}
+              onChange={(e) => setSortKey(Number(e.target.value))}
               fullWidth
             />
           </Stack>
 
           <TextField
-            label="Place"
+            label="Context"
             placeholder="New York, USA"
-            value={place}
-            onChange={(e) => setPlace(e.target.value)}
+            value={factContext}
+            onChange={(e) => setFactContext(e.target.value)}
             fullWidth
           />
 

@@ -34,9 +34,10 @@ func New(projectsDir string) *Store { return &Store{projectsDir: projectsDir} }
 // because an internal struct was refactored.
 type factJSON struct {
 	ID          string  `json:"id"`
-	YearLabel   string  `json:"year_label"`
-	SortYear    int     `json:"sort_year"`
-	Place       string  `json:"place"`
+	Label       string  `json:"label"`
+	SortKey     int64   `json:"sort_key"`
+	Context     string  `json:"context"`
+	Group       string  `json:"group"`
 	Claim       string  `json:"claim"`
 	Evidence    string  `json:"evidence"`
 	SourceURL   string  `json:"source_url"`
@@ -60,7 +61,22 @@ type sourceJSON struct {
 }
 
 type sheetJSON struct {
-	Topic   string       `json:"topic"`
+	Topic string `json:"topic"`
+
+	// The format and its gate rules travel with the sheet, so Go can enforce
+	// a format's thresholds without knowing which formats exist.
+	Format    string `json:"format"`
+	GroupNoun string `json:"group_noun"`
+	MinItems  int    `json:"min_items"`
+	MinGroups int    `json:"min_groups"`
+
+	// How much the model invented. These used to be computed by the worker
+	// and then discarded, which silently broke the one objective measure of
+	// model quality on this task.
+	CandidatesExtracted int      `json:"candidates_extracted"`
+	CandidatesRejected  int      `json:"candidates_rejected"`
+	Rejections          []string `json:"rejections,omitempty"`
+
 	Facts   []factJSON   `json:"facts"`
 	Sources []sourceJSON `json:"sources"`
 }
@@ -89,13 +105,24 @@ func (s *Store) Load(videoID string) (*domain.FactSheet, bool, error) {
 		return nil, false, fmt.Errorf("parsing %s: %w", path, err)
 	}
 
-	sheet := &domain.FactSheet{Topic: raw.Topic, Path: path}
+	sheet := &domain.FactSheet{
+		Topic:               raw.Topic,
+		Path:                path,
+		Format:              raw.Format,
+		GroupNoun:           raw.GroupNoun,
+		MinItems:            raw.MinItems,
+		MinGroups:           raw.MinGroups,
+		CandidatesExtracted: raw.CandidatesExtracted,
+		CandidatesRejected:  raw.CandidatesRejected,
+		Rejections:          raw.Rejections,
+	}
 	for _, f := range raw.Facts {
 		sheet.Facts = append(sheet.Facts, domain.Fact{
 			ID:           f.ID,
-			YearLabel:    f.YearLabel,
-			SortYear:     f.SortYear,
-			Place:        f.Place,
+			Label:        f.Label,
+			SortKey:      f.SortKey,
+			Context:      f.Context,
+			Group:        f.Group,
 			Claim:        f.Claim,
 			Evidence:     f.Evidence,
 			SourceURL:    f.SourceURL,
@@ -126,19 +153,29 @@ func (s *Store) Save(videoID string, sheet *domain.FactSheet) error {
 		return err
 	}
 
-	// Keep the file chronological however facts were edited or added, so it
-	// always reads as a timeline.
+	// Keep the file in the format's own order however facts were edited or
+	// added, so it always reads the way the video will play.
 	sorted := make([]domain.Fact, len(sheet.Facts))
 	copy(sorted, sheet.Facts)
-	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].SortYear < sorted[j].SortYear })
+	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].SortKey < sorted[j].SortKey })
 
-	raw := sheetJSON{Topic: sheet.Topic}
+	raw := sheetJSON{
+		Topic:               sheet.Topic,
+		Format:              sheet.Format,
+		GroupNoun:           sheet.GroupNoun,
+		MinItems:            sheet.MinItems,
+		MinGroups:           sheet.MinGroups,
+		CandidatesExtracted: sheet.CandidatesExtracted,
+		CandidatesRejected:  sheet.CandidatesRejected,
+		Rejections:          sheet.Rejections,
+	}
 	for _, f := range sorted {
 		raw.Facts = append(raw.Facts, factJSON{
 			ID:           f.ID,
-			YearLabel:    f.YearLabel,
-			SortYear:     f.SortYear,
-			Place:        f.Place,
+			Label:        f.Label,
+			SortKey:      f.SortKey,
+			Context:      f.Context,
+			Group:        f.Group,
 			Claim:        f.Claim,
 			Evidence:     f.Evidence,
 			SourceURL:    f.SourceURL,

@@ -62,9 +62,9 @@ func (h *FactsHandler) UpdateFact(
 	view, err := h.facts.UpdateFact(ctx,
 		req.Msg.GetVideoId(),
 		req.Msg.GetFactId(),
-		req.Msg.GetYearLabel(),
-		int(req.Msg.GetSortYear()),
-		req.Msg.GetPlace(),
+		req.Msg.GetLabel(),
+		req.Msg.GetSortKey(),
+		req.Msg.GetContext(),
 		req.Msg.GetClaim(),
 	)
 	if err != nil {
@@ -90,9 +90,9 @@ func (h *FactsHandler) AddFact(
 	req *connect.Request[rewindv1.AddFactRequest],
 ) (*connect.Response[rewindv1.AddFactResponse], error) {
 	view, err := h.facts.AddFact(ctx, req.Msg.GetVideoId(), domain.Fact{
-		YearLabel: req.Msg.GetYearLabel(),
-		SortYear:  int(req.Msg.GetSortYear()),
-		Place:     req.Msg.GetPlace(),
+		Label:     req.Msg.GetLabel(),
+		SortKey:   req.Msg.GetSortKey(),
+		Context:   req.Msg.GetContext(),
 		Claim:     req.Msg.GetClaim(),
 		SourceURL: req.Msg.GetSourceUrl(),
 		Evidence:  req.Msg.GetEvidence(),
@@ -109,23 +109,32 @@ func toProtoFactsView(view *service.FactsView) *rewindv1.FactsView {
 	}
 
 	sheet := &rewindv1.FactSheet{
-		Topic:         view.Sheet.Topic,
-		FactsJsonPath: view.Sheet.Path,
+		Topic:               view.Sheet.Topic,
+		FactsJsonPath:       view.Sheet.Path,
+		Format:              view.Sheet.Format,
+		GroupNoun:           view.Sheet.GroupNoun,
+		MinItems:            int32(view.Sheet.MinItems),
+		MinGroups:           int32(view.Sheet.MinGroups),
+		CandidatesExtracted: int32(view.Sheet.CandidatesExtracted),
+		CandidatesRejected:  int32(view.Sheet.CandidatesRejected),
+		Rejections:          view.Sheet.Rejections,
 	}
 	for _, f := range view.Sheet.Facts {
 		sheet.Facts = append(sheet.Facts, &rewindv1.Fact{
-			Id:          f.ID,
-			YearLabel:   f.YearLabel,
-			SortYear:    int32(f.SortYear),
-			Place:       f.Place,
-			Claim:       f.Claim,
-			Evidence:    f.Evidence,
-			SourceUrl:   f.SourceURL,
-			SourceTitle: f.SourceTitle,
-			Confidence:  f.Confidence,
-			Conflict:    f.Conflict,
-			Approved:    f.Approved,
-			MatchScore:  f.MatchScore,
+			Id:           f.ID,
+			Label:        f.Label,
+			SortKey:      f.SortKey,
+			Context:      f.Context,
+			Group:        f.Group,
+			Claim:        f.Claim,
+			Evidence:     f.Evidence,
+			SourceUrl:    f.SourceURL,
+			SourceTitle:  f.SourceTitle,
+			Confidence:   f.Confidence,
+			Conflict:     f.Conflict,
+			Approved:     f.Approved,
+			MatchScore:   f.MatchScore,
+			AddedByHuman: f.AddedByHuman,
 		})
 	}
 	for _, src := range view.Sheet.Sources {
@@ -143,7 +152,8 @@ func toProtoFactsView(view *service.FactsView) *rewindv1.FactsView {
 		CanApprove:      view.Readiness.CanApprove,
 		ApprovalBlocker: view.Readiness.Blocker,
 		ApprovedCount:   int32(view.Readiness.Approved),
-		EraCount:        int32(view.Readiness.Eras),
+		GroupCount:      int32(view.Readiness.Groups),
+		GroupNoun:       view.Readiness.GroupNoun,
 	}
 }
 

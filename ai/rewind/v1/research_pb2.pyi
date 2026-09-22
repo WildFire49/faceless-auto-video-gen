@@ -90,14 +90,20 @@ Global___BuildFactSheetResponse: _TypeAlias = BuildFactSheetResponse  # noqa: Y0
 
 @_typing.final
 class Fact(_message.Message):
-    """Fact is one timeline entry (SPEC.md 5.2)."""
+    """Fact is one verified item (SPEC.md 5.2).
+
+    The field names are format-neutral on purpose. For a timeline, `label` is a
+    year and `sort_key` orders chronologically; for a myth-buster, `label` is
+    the belief and `sort_key` is how surprising the correction is. What never
+    varies is the pairing of `claim` with the `evidence` that supports it.
+    """
 
     DESCRIPTOR: _descriptor.Descriptor
 
     ID_FIELD_NUMBER: _builtins.int
-    YEAR_LABEL_FIELD_NUMBER: _builtins.int
-    SORT_YEAR_FIELD_NUMBER: _builtins.int
-    PLACE_FIELD_NUMBER: _builtins.int
+    LABEL_FIELD_NUMBER: _builtins.int
+    SORT_KEY_FIELD_NUMBER: _builtins.int
+    CONTEXT_FIELD_NUMBER: _builtins.int
     CLAIM_FIELD_NUMBER: _builtins.int
     EVIDENCE_FIELD_NUMBER: _builtins.int
     SOURCE_URL_FIELD_NUMBER: _builtins.int
@@ -106,13 +112,27 @@ class Fact(_message.Message):
     CONFLICT_FIELD_NUMBER: _builtins.int
     APPROVED_FIELD_NUMBER: _builtins.int
     MATCH_SCORE_FIELD_NUMBER: _builtins.int
+    GROUP_FIELD_NUMBER: _builtins.int
+    ADDED_BY_HUMAN_FIELD_NUMBER: _builtins.int
     id: _builtins.str
     """"f1", "f2", ..."""
-    year_label: _builtins.str
-    """How the year is spoken, e.g. "~9,000 years ago" or "1882"."""
-    sort_year: _builtins.int
-    """Sortable year; negative for BC. -7000 means 7000 BC."""
-    place: _builtins.str
+    label: _builtins.str
+    """What the narrator says to introduce this item.
+    Timeline: "~9,000 years ago". Myth-buster: "You need 8 hours of sleep".
+    """
+    sort_key: _builtins.int
+    """Orders the items. Meaning is the format's: a year (negative for BC), a
+    rank, a step number, a surprise rating.
+
+    int64, not int32: asked about "iron", a model correctly returns the
+    formation of the Earth's core at -4,600,000,000, which overflows int32 and
+    used to crash serialization AFTER all the research work was done. Such a
+    value is rejected on plausibility grounds by the format -- but that is a
+    decision for the pipeline to make and report, never a failure mode of the
+    wire format.
+    """
+    context: _builtins.str
+    """Where or in what setting. Timeline: "Oregon, USA". Myth-buster: "health"."""
     claim: _builtins.str
     """The claim, in the narrator's words."""
     evidence: _builtins.str
@@ -133,13 +153,24 @@ class Fact(_message.Message):
     """How closely the evidence matched the source, 0..1. Surfaced at Gate A so
     a borderline match can be eyeballed.
     """
+    group: _builtins.str
+    """The variety bucket this item falls in, computed by the format.
+    Timeline: "industrial". Myth-buster: "health". Gate A requires the
+    approved items to span several distinct groups, so a video is not eight
+    variations on one idea.
+    """
+    added_by_human: _builtins.bool
+    """True for items a human typed in themselves at the gate. Those skip the
+    evidence verifier -- a person citing a book is the authority the verifier
+    substitutes for -- so it matters that they stay distinguishable.
+    """
     def __init__(
         self,
         *,
         id: _builtins.str = ...,
-        year_label: _builtins.str = ...,
-        sort_year: _builtins.int = ...,
-        place: _builtins.str = ...,
+        label: _builtins.str = ...,
+        sort_key: _builtins.int = ...,
+        context: _builtins.str = ...,
         claim: _builtins.str = ...,
         evidence: _builtins.str = ...,
         source_url: _builtins.str = ...,
@@ -148,10 +179,12 @@ class Fact(_message.Message):
         conflict: _builtins.bool = ...,
         approved: _builtins.bool = ...,
         match_score: _builtins.float = ...,
+        group: _builtins.str = ...,
+        added_by_human: _builtins.bool = ...,
     ) -> None: ...
     _HasFieldArgType: _TypeAlias = _Never  # noqa: Y015
     def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
-    _ClearFieldArgType: _TypeAlias = _typing.Literal["approved", b"approved", "claim", b"claim", "confidence", b"confidence", "conflict", b"conflict", "evidence", b"evidence", "id", b"id", "match_score", b"match_score", "place", b"place", "sort_year", b"sort_year", "source_title", b"source_title", "source_url", b"source_url", "year_label", b"year_label"]  # noqa: Y015
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["added_by_human", b"added_by_human", "approved", b"approved", "claim", b"claim", "confidence", b"confidence", "conflict", b"conflict", "context", b"context", "evidence", b"evidence", "group", b"group", "id", b"id", "label", b"label", "match_score", b"match_score", "sort_key", b"sort_key", "source_title", b"source_title", "source_url", b"source_url"]  # noqa: Y015
     def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
     def WhichOneof(self, oneof_group: _Never) -> None: ...
 
@@ -196,19 +229,41 @@ class FactSheet(_message.Message):
     FACTS_JSON_PATH_FIELD_NUMBER: _builtins.int
     CANDIDATES_EXTRACTED_FIELD_NUMBER: _builtins.int
     CANDIDATES_REJECTED_FIELD_NUMBER: _builtins.int
+    REJECTIONS_FIELD_NUMBER: _builtins.int
+    FORMAT_FIELD_NUMBER: _builtins.int
+    GROUP_NOUN_FIELD_NUMBER: _builtins.int
+    MIN_ITEMS_FIELD_NUMBER: _builtins.int
+    MIN_GROUPS_FIELD_NUMBER: _builtins.int
     topic: _builtins.str
     facts_json_path: _builtins.str
     """Where the worker wrote facts.json. Paths, not bytes (SPEC.md 2.5)."""
     candidates_extracted: _builtins.int
-    """How many candidates the LLM proposed and how many survived verification.
-    Shown at Gate A: a large gap is a signal the model is drifting, and worth
-    knowing before you trust what is left.
+    """How many candidates the LLM proposed and how many were thrown out.
+    Shown at Gate A: a large gap is a measurement of the MODEL, not of the
+    topic -- the one objective signal of how much a given model invents on
+    this exact task.
     """
     candidates_rejected: _builtins.int
+    format: _builtins.str
+    """Which content format produced this sheet, and the words to describe its
+    variety requirement. Carried in the sheet so the gate machinery can
+    enforce a format's rules without knowing the format exists.
+    """
+    group_noun: _builtins.str
+    """"era", "domain", "category" """
+    min_items: _builtins.int
+    """The thresholds this sheet's format requires before its gate can open."""
+    min_groups: _builtins.int
     @_builtins.property
     def facts(self) -> _containers.RepeatedCompositeFieldContainer[Global___Fact]: ...
     @_builtins.property
     def sources(self) -> _containers.RepeatedCompositeFieldContainer[Global___SourceDocument]: ...
+    @_builtins.property
+    def rejections(self) -> _containers.RepeatedScalarFieldContainer[_builtins.str]:
+        """Why each one was thrown out, so the number is inspectable rather than
+        merely alarming.
+        """
+
     def __init__(
         self,
         *,
@@ -218,10 +273,15 @@ class FactSheet(_message.Message):
         facts_json_path: _builtins.str = ...,
         candidates_extracted: _builtins.int = ...,
         candidates_rejected: _builtins.int = ...,
+        rejections: _abc.Iterable[_builtins.str] | None = ...,
+        format: _builtins.str = ...,
+        group_noun: _builtins.str = ...,
+        min_items: _builtins.int = ...,
+        min_groups: _builtins.int = ...,
     ) -> None: ...
     _HasFieldArgType: _TypeAlias = _Never  # noqa: Y015
     def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
-    _ClearFieldArgType: _TypeAlias = _typing.Literal["candidates_extracted", b"candidates_extracted", "candidates_rejected", b"candidates_rejected", "facts", b"facts", "facts_json_path", b"facts_json_path", "sources", b"sources", "topic", b"topic"]  # noqa: Y015
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["candidates_extracted", b"candidates_extracted", "candidates_rejected", b"candidates_rejected", "facts", b"facts", "facts_json_path", b"facts_json_path", "format", b"format", "group_noun", b"group_noun", "min_groups", b"min_groups", "min_items", b"min_items", "rejections", b"rejections", "sources", b"sources", "topic", b"topic"]  # noqa: Y015
     def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
     def WhichOneof(self, oneof_group: _Never) -> None: ...
 

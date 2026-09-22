@@ -81,11 +81,11 @@ export function FactRow({ fact, onToggle, onEdit, onDelete, busy = false }: Fact
             variant="body1"
             sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
           >
-            {fact.yearLabel}
+            {fact.label}
           </Typography>
-          {fact.place ? (
+          {fact.context ? (
             <Typography variant="body2" color="text.secondary">
-              {fact.place}
+              {fact.context}
             </Typography>
           ) : null}
 

@@ -6,23 +6,33 @@ import (
 	"strings"
 )
 
-// Fact is one entry on the timeline (SPEC.md 5.2).
+// Fact is one verified item (SPEC.md 5.2).
 //
-// The pairing that matters: Claim is what a narrator says, Evidence is the
-// sentence from the source that supports it. Evidence and SourceURL are never
-// editable for an extracted fact, because they are the record of where the
-// claim came from -- letting a human rewrite them would defeat the verifier
-// that produced them.
+// Format-neutral by design: for a timeline Label is a year and SortKey orders
+// chronologically; for a myth-buster Label is the belief and SortKey is how
+// surprising the correction is. Go never needs to know which -- it stores,
+// counts and serves whatever the worker produced.
+//
+// The pairing that matters, and never varies: Claim is what a narrator says,
+// Evidence is the sentence from the source that supports it. Evidence and
+// SourceURL are never editable for an extracted fact, because they are the
+// record of where the claim came from -- letting a human rewrite them would
+// defeat the verifier that produced them.
 type Fact struct {
-	ID        string
-	YearLabel string
-	SortYear  int
-	Place     string
-	Claim     string
+	ID      string
+	Label   string
+	SortKey int64
+	Context string
+	Claim   string
 
 	Evidence    string
 	SourceURL   string
 	SourceTitle string
+
+	// Group is the variety bucket, computed by the format: "industrial" for a
+	// timeline, "health" for a myth-buster. Go only ever counts distinct
+	// values, so their meaning stays the format's business.
+	Group string
 
 	Confidence string
 	Conflict   bool
@@ -43,6 +53,10 @@ type FactSource struct {
 }
 
 // FactSheet is a video's research output.
+//
+// It carries its own review thresholds. That is what lets the gate machinery
+// enforce a format's rules without knowing which formats exist -- adding a
+// format in Python never touches Go (SPEC.md 14.2).
 type FactSheet struct {
 	Topic   string
 	Facts   []Fact
@@ -50,6 +64,20 @@ type FactSheet struct {
 	// Path is where the sheet lives on disk, shown in the UI so you can open
 	// the raw file.
 	Path string
+
+	// Format is the content format that produced this sheet.
+	Format string
+	// GroupNoun is what a group is called here: "era", "domain", "category".
+	GroupNoun string
+	// MinItems and MinGroups are this format's gate thresholds.
+	MinItems  int
+	MinGroups int
+
+	// CandidatesExtracted and CandidatesRejected measure the MODEL: a large
+	// gap means it invents on this task. Surfaced at Gate A.
+	CandidatesExtracted int
+	CandidatesRejected  int
+	Rejections          []string
 }
 
 // FactStore reads and writes fact sheets.
@@ -81,45 +109,19 @@ func (s *FactSheet) ApprovedCount() int {
 	return n
 }
 
-// EraCount is how many distinct eras the APPROVED facts span.
+// GroupCount is how many distinct groups the APPROVED facts span.
 //
 // Gate A requires breadth as well as volume (SPEC.md 5.2): eight facts about
-// the 1900s make a dull episode, because the series premise is time travel
-// across the whole life of an object.
-func (s *FactSheet) EraCount() int {
+// the 1900s make a dull episode. What counts as a group is the format's
+// decision, already recorded on each fact -- Go just counts them.
+func (s *FactSheet) GroupCount() int {
 	seen := make(map[string]struct{})
 	for _, f := range s.Facts {
-		if f.Approved {
-			seen[eraOf(f.SortYear)] = struct{}{}
+		if f.Approved && f.Group != "" {
+			seen[f.Group] = struct{}{}
 		}
 	}
 	return len(seen)
-}
-
-// eraOf buckets a year into a broad historical era.
-//
-// The buckets widen as they go back, because "7000 BC vs 6000 BC" is one era
-// to a viewer while "1950 vs 1990" is clearly two. The aim is a rough measure
-// of variety, not a historian's periodisation.
-func eraOf(year int) string {
-	switch {
-	case year < -3000:
-		return "prehistory"
-	case year < -500:
-		return "ancient"
-	case year < 500:
-		return "classical"
-	case year < 1400:
-		return "medieval"
-	case year < 1750:
-		return "early-modern"
-	case year < 1900:
-		return "industrial"
-	case year < 1980:
-		return "20th-century"
-	default:
-		return "modern"
-	}
 }
 
 // NextFactID returns an unused fact id for a human-added fact.
@@ -143,40 +145,55 @@ type GateAReadiness struct {
 	CanApprove bool
 	Blocker    string
 	Approved   int
-	Eras       int
+	Groups     int
+	GroupNoun  string
 }
 
 // CheckGateA applies the Gate A rules (SPEC.md 5.2).
 //
+// The thresholds come from the SHEET, which carries the rules its own format
+// declared. That is what makes this function work unchanged for a format
+// written after it.
+//
 // Deliberately in the domain rather than the UI: the CLI, the API and the
 // dashboard must all agree about when a fact sheet is good enough, and a rule
 // implemented in a React component is a rule only the browser enforces.
-func CheckGateA(sheet *FactSheet, minFacts, minEras int) GateAReadiness {
+func CheckGateA(sheet *FactSheet) GateAReadiness {
 	if sheet == nil {
 		return GateAReadiness{Blocker: "no fact sheet yet — run the research step first"}
 	}
 
+	minItems, minGroups, noun := sheet.MinItems, sheet.MinGroups, sheet.GroupNoun
+
+	// A sheet written by an older build, or edited by hand, must not become
+	// approvable with nothing in it.
+	if minItems <= 0 {
+		minItems = 8
+	}
+	if minGroups <= 0 {
+		minGroups = 4
+	}
+	if noun == "" {
+		noun = "group"
+	}
+
 	approved := sheet.ApprovedCount()
-	eras := sheet.EraCount()
+	groups := sheet.GroupCount()
+
+	readiness := GateAReadiness{Approved: approved, Groups: groups, GroupNoun: noun}
 
 	switch {
-	case approved < minFacts:
-		return GateAReadiness{
-			Approved: approved,
-			Eras:     eras,
-			Blocker: fmt.Sprintf("%d of %d facts approved — tick at least %d",
-				approved, len(sheet.Facts), minFacts),
-		}
-	case eras < minEras:
-		return GateAReadiness{
-			Approved: approved,
-			Eras:     eras,
-			Blocker: fmt.Sprintf("approved facts span only %d era(s), need %d — "+
-				"approve some from further back or further forward", eras, minEras),
-		}
+	case approved < minItems:
+		readiness.Blocker = fmt.Sprintf("%d of %d facts approved — tick at least %d",
+			approved, len(sheet.Facts), minItems)
+	case groups < minGroups:
+		readiness.Blocker = fmt.Sprintf(
+			"approved facts span only %d %s(s), need %d — approve a wider spread",
+			groups, noun, minGroups)
 	default:
-		return GateAReadiness{CanApprove: true, Approved: approved, Eras: eras}
+		readiness.CanApprove = true
 	}
+	return readiness
 }
 
 // ValidateHumanFact checks a fact a person typed at Gate A.
@@ -188,8 +205,8 @@ func ValidateHumanFact(f Fact) error {
 	if strings.TrimSpace(f.Claim) == "" {
 		return fmt.Errorf("%w: a claim is required", ErrValidation)
 	}
-	if strings.TrimSpace(f.YearLabel) == "" {
-		return fmt.Errorf("%w: a year label is required", ErrValidation)
+	if strings.TrimSpace(f.Label) == "" {
+		return fmt.Errorf("%w: a label is required", ErrValidation)
 	}
 
 	source := strings.TrimSpace(f.SourceURL)

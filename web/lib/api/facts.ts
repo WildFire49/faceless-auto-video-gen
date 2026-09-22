@@ -92,11 +92,19 @@ export function useFactMutations(videoId: string) {
   const updateFact = useMutation({
     mutationFn: (input: {
       factId: string;
-      yearLabel: string;
-      sortYear: number;
-      place: string;
+      label: string;
+      sortKey: number;
+      context: string;
       claim: string;
-    }) => factsClient.updateFact({ videoId, ...input }),
+    }) =>
+      factsClient.updateFact({
+        videoId,
+        ...input,
+        // sort_key is int64 on the wire, which protobuf-es represents as a
+        // bigint. Real values fit a JS number comfortably, so the forms use
+        // numbers and convert here rather than everywhere.
+        sortKey: BigInt(input.sortKey),
+      }),
     onSuccess: (res) => applyView(res.view),
   });
 
@@ -108,13 +116,13 @@ export function useFactMutations(videoId: string) {
 
   const addFact = useMutation({
     mutationFn: (input: {
-      yearLabel: string;
-      sortYear: number;
-      place: string;
+      label: string;
+      sortKey: number;
+      context: string;
       claim: string;
       sourceUrl: string;
       evidence: string;
-    }) => factsClient.addFact({ videoId, ...input }),
+    }) => factsClient.addFact({ videoId, ...input, sortKey: BigInt(input.sortKey) }),
     onSuccess: (res) => applyView(res.view),
   });
 

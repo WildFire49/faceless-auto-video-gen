@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from rewind_ai.core import registry
 from rewind_ai.core.config import Settings
 from rewind_ai.core.logging import get_logger
+from rewind_ai.formats import factory as format_factory
+from rewind_ai.formats.base import ContentFormat
 from rewind_ai.health import probes as probe_package
 from rewind_ai.health.base import Probe
 from rewind_ai.health.service import HealthChecker
@@ -38,6 +40,7 @@ class Container:
     health: HealthChecker
     research: ResearchService
     llm: LLM
+    content_format: ContentFormat
 
 
 def build(settings: Settings) -> Container:
@@ -58,11 +61,14 @@ def build(settings: Settings) -> Container:
     )
     llm = llm_factory.build(llm_config)
 
+    content_format = format_factory.build(settings.content.format)
     fetchers = _build_fetchers(settings)
     probes = _build_probes(llm_model=settings.llm.model, base_url=settings.llm.base_url)
 
     log.info(
         "providers registered",
+        content_format=content_format.name,
+        available_formats=format_factory.available(),
         llm=settings.llm.provider,
         model=settings.llm.model,
         research_sources=[f.name for f in fetchers],
@@ -73,14 +79,15 @@ def build(settings: Settings) -> Container:
         settings=settings,
         health=HealthChecker(version=VERSION, probes=probes),
         llm=llm,
+        content_format=content_format,
         research=ResearchService(
             fetchers=fetchers,
             llm=llm,
+            content_format=content_format,
             config=ResearchConfig(
-                min_facts=settings.research.min_facts,
-                min_eras=settings.research.min_eras,
                 evidence_match_threshold=settings.research.evidence_match_threshold,
                 max_chunk_chars=settings.llm.max_chunk_chars,
+                max_items=settings.research.max_items,
             ),
             projects_dir=settings.paths.projects,
         ),

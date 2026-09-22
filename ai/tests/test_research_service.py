@@ -18,6 +18,7 @@ from typing import Any
 import pytest
 
 from rewind_ai.core.errors import ValidationFailedError
+from rewind_ai.formats.providers.history_timeline import HistoryTimeline
 from rewind_ai.research.base import Document
 from rewind_ai.research.service import ResearchConfig, ResearchService
 from rewind_ai.research.verifier import normalise
@@ -78,10 +79,11 @@ class FakeLLM:
         del system, prompt, schema
         index = min(self.calls, len(self._batches) - 1)
         self.calls += 1
-        return {"events": self._batches[index]}
+        return {"items": self._batches[index]}
 
 
 def event(year_label: str, sort_year: int, claim: str, evidence: str) -> dict[str, Any]:
+    """One item in the shape history_timeline asks the model for."""
     return {
         "year_label": year_label,
         "sort_year": sort_year,
@@ -163,14 +165,13 @@ def build_service(
     tmp_path: Path,
     documents: list[Document],
     batches: list[list[dict[str, Any]]],
-    *,
-    min_facts: int = 8,
 ) -> tuple[ResearchService, FakeLLM]:
     llm = FakeLLM(batches)
     service = ResearchService(
         fetchers=[FakeFetcher(documents)],
         llm=llm,
-        config=ResearchConfig(min_facts=min_facts, evidence_match_threshold=0.90),
+        content_format=HistoryTimeline(),
+        config=ResearchConfig(evidence_match_threshold=0.90),
         projects_dir=tmp_path,
     )
     return service, llm
@@ -189,7 +190,7 @@ def test_builds_a_verified_fact_sheet(tmp_path: Path, documents: list[Document])
 
     # Facts are numbered and chronological.
     assert [f.id for f in result.facts] == [f"f{i}" for i in range(1, len(result.facts) + 1)]
-    years = [f.sort_year for f in result.facts]
+    years = [f.sort_key for f in result.facts]
     assert years == sorted(years)
 
     # SPEC.md 5.2 acceptance: no fact without a source, and every evidence
@@ -218,6 +219,19 @@ def test_writes_facts_json(tmp_path: Path, documents: list[Document]) -> None:
     assert data["topic"] == "sandals"
     assert len(data["facts"]) == len(result.facts)
     assert data["sources"][0]["url"] == SOURCE_URL
+
+    # The sheet declares its own format and gate rules, so Go can enforce a
+    # format's thresholds without knowing which formats exist.
+    assert data["format"] == "history_timeline"
+    assert data["group_noun"] == "era"
+    assert data["min_items"] == 8
+    assert data["min_groups"] == 4
+
+    # These counts used to be computed and discarded, which silently broke the
+    # one objective measure of how much a model invents.
+    assert data["candidates_extracted"] == len(HONEST_EVENTS)
+    assert data["candidates_rejected"] == 0
+    assert "rejections" in data
 
     first = data["facts"][0]
     assert first["approved"] is False, "the worker must never pre-approve a fact"
@@ -263,9 +277,52 @@ def test_facts_with_doctored_dates_are_dropped(tmp_path: Path, documents: list[D
     result = service.build(video_id="sandals", topic="sandals", extra_urls=[])
 
     assert result.candidates_rejected == 1
-    assert all(f.sort_year != -3000 for f in result.facts), (
+    assert all(f.sort_key != -3000 for f in result.facts), (
         "a fact with a falsified date survived verification"
     )
+
+
+def test_geological_dates_are_rejected_not_crashed(
+    tmp_path: Path, documents: list[Document]
+) -> None:
+    """The exact E2E failure, as a regression test.
+
+    A correctly sourced fact about the Earth's core must be rejected on
+    plausibility grounds and COUNTED, not allowed through to overflow the wire
+    format after all the work is done.
+    """
+    geological = event(
+        "4.6 billion years ago",
+        -4_600_000_000,
+        "Iron formed in the Earth's core.",
+        "The oldest known footwear in the world are sandals woven from sagebrush bark, "
+        "dated to approximately 7000 or 8000 BC, found at the Fort Rock Cave in Oregon.",
+    )
+    service, _ = build_service(tmp_path, documents, [[*HONEST_EVENTS, geological]])
+
+    result = service.build(video_id="sandals", topic="sandals", extra_urls=[])
+
+    assert result.candidates_rejected == 1
+    assert all(f.sort_key > -4_000_000 for f in result.facts), (
+        "a geological date survived into the fact sheet"
+    )
+    assert any("geological" in r for r in result.rejections), (
+        "the rejection must say WHY, so it is not mistaken for a verification failure"
+    )
+
+
+def test_every_sort_key_fits_the_wire_format(tmp_path: Path, documents: list[Document]) -> None:
+    """Nothing reaching the wire may overflow int64.
+
+    The bound above is far tighter, so this is belt and braces -- but the
+    original bug was precisely a value that passed every check and then failed
+    at serialization.
+    """
+    service, _ = build_service(tmp_path, documents, [HONEST_EVENTS])
+    result = service.build(video_id="sandals", topic="sandals", extra_urls=[])
+
+    for fact in result.facts:
+        assert -(2**63) < fact.sort_key < 2**63 - 1, f"{fact.id} cannot be serialised"
 
 
 def test_too_few_verified_facts_fails_loudly(tmp_path: Path, documents: list[Document]) -> None:
@@ -304,7 +361,7 @@ def test_duplicate_facts_are_merged(tmp_path: Path, documents: list[Document]) -
 
     result = service.build(video_id="sandals", topic="sandals", extra_urls=[])
 
-    oldest = [f for f in result.facts if f.sort_year == -7000]
+    oldest = [f for f in result.facts if f.sort_key == -7000]
     assert len(oldest) == 1, f"expected one fact for 7000 BC, got {len(oldest)}"
 
 
@@ -340,7 +397,8 @@ def test_a_failing_source_does_not_sink_the_run(tmp_path: Path, documents: list[
     service = ResearchService(
         fetchers=[BrokenFetcher(), FakeFetcher(documents)],
         llm=llm,
-        config=ResearchConfig(min_facts=8, evidence_match_threshold=0.90),
+        content_format=HistoryTimeline(),
+        config=ResearchConfig(evidence_match_threshold=0.90),
         projects_dir=tmp_path,
     )
 

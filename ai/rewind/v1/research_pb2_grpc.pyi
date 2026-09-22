@@ -34,6 +34,10 @@ class ResearchServiceStub:
     carry the exact sentence it came from. A verifier then checks that sentence
     really appears in the fetched source, and drops anything that does not.
     That is what makes hallucinated dates impossible rather than unlikely.
+    The format -- timeline, myth-buster, ranked list -- is chosen in
+    config/channel.yaml and owned entirely by the worker. Go never needs to know
+    which formats exist: the fact sheet declares its own review thresholds, so
+    the gate machinery works for a format written after this comment.
     """
 
     @_typing.overload
@@ -56,6 +60,10 @@ class ResearchServiceAsyncStub(ResearchServiceStub):
     carry the exact sentence it came from. A verifier then checks that sentence
     really appears in the fetched source, and drops anything that does not.
     That is what makes hallucinated dates impossible rather than unlikely.
+    The format -- timeline, myth-buster, ranked list -- is chosen in
+    config/channel.yaml and owned entirely by the worker. Go never needs to know
+    which formats exist: the fact sheet declares its own review thresholds, so
+    the gate machinery works for a format written after this comment.
     """
 
     def __init__(self, channel: _aio.Channel) -> None: ...
@@ -74,6 +82,10 @@ class ResearchServiceServicer(metaclass=_abc_1.ABCMeta):
     carry the exact sentence it came from. A verifier then checks that sentence
     really appears in the fetched source, and drops anything that does not.
     That is what makes hallucinated dates impossible rather than unlikely.
+    The format -- timeline, myth-buster, ranked list -- is chosen in
+    config/channel.yaml and owned entirely by the worker. Go never needs to know
+    which formats exist: the fact sheet declares its own review thresholds, so
+    the gate machinery works for a format written after this comment.
     """
 
     @_abc_1.abstractmethod

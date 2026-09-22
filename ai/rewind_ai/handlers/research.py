@@ -171,6 +171,11 @@ def _result(result: ResearchResult) -> research_pb2.BuildFactSheetResponse:
             facts_json_path=result.facts_json_path,
             candidates_extracted=result.candidates_extracted,
             candidates_rejected=result.candidates_rejected,
+            rejections=result.rejections,
+            format=result.format_name,
+            group_noun=result.group_noun,
+            min_items=result.min_items,
+            min_groups=result.min_groups,
         )
     )
 
@@ -178,9 +183,10 @@ def _result(result: ResearchResult) -> research_pb2.BuildFactSheetResponse:
 def _to_proto_fact(fact: Fact) -> research_pb2.Fact:
     return research_pb2.Fact(
         id=fact.id,
-        year_label=fact.year_label,
-        sort_year=fact.sort_year,
-        place=fact.place,
+        label=fact.label,
+        sort_key=fact.sort_key,
+        context=fact.context,
+        group=fact.group,
         claim=fact.claim,
         evidence=fact.evidence,
         source_url=fact.source_url,

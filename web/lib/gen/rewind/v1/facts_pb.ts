@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file rewind/v1/facts.proto.
  */
 export const file_rewind_v1_facts: GenFile = /*@__PURE__*/
-  fileDesc("ChVyZXdpbmQvdjEvZmFjdHMucHJvdG8SCXJld2luZC52MSKaAQoJRmFjdHNWaWV3Eg4KBmV4aXN0cxgBIAEoCBIjCgVzaGVldBgCIAEoCzIULnJld2luZC52MS5GYWN0U2hlZXQSEwoLY2FuX2FwcHJvdmUYAyABKAgSGAoQYXBwcm92YWxfYmxvY2tlchgEIAEoCRIWCg5hcHByb3ZlZF9jb3VudBgFIAEoBRIRCgllcmFfY291bnQYBiABKAUiIwoPR2V0RmFjdHNSZXF1ZXN0EhAKCHZpZGVvX2lkGAEgASgJIjYKEEdldEZhY3RzUmVzcG9uc2USIgoEdmlldxgBIAEoCzIULnJld2luZC52MS5GYWN0c1ZpZXciTQoWU2V0RmFjdEFwcHJvdmFsUmVxdWVzdBIQCgh2aWRlb19pZBgBIAEoCRIPCgdmYWN0X2lkGAIgASgJEhAKCGFwcHJvdmVkGAMgASgIIj0KF1NldEZhY3RBcHByb3ZhbFJlc3BvbnNlEiIKBHZpZXcYASABKAsyFC5yZXdpbmQudjEuRmFjdHNWaWV3IjwKFkFwcHJvdmVBbGxGYWN0c1JlcXVlc3QSEAoIdmlkZW9faWQYASABKAkSEAoIYXBwcm92ZWQYAiABKAgiPQoXQXBwcm92ZUFsbEZhY3RzUmVzcG9uc2USIgoEdmlldxgBIAEoCzIULnJld2luZC52MS5GYWN0c1ZpZXciewoRVXBkYXRlRmFjdFJlcXVlc3QSEAoIdmlkZW9faWQYASABKAkSDwoHZmFjdF9pZBgCIAEoCRISCgp5ZWFyX2xhYmVsGAMgASgJEhEKCXNvcnRfeWVhchgEIAEoBRINCgVwbGFjZRgFIAEoCRINCgVjbGFpbRgGIAEoCSI4ChJVcGRhdGVGYWN0UmVzcG9uc2USIgoEdmlldxgBIAEoCzIULnJld2luZC52MS5GYWN0c1ZpZXciRgoRRGVsZXRlRmFjdFJlcXVlc3QSEAoIdmlkZW9faWQYASABKAkSDwoHZmFjdF9pZBgCIAEoCRIOCgZyZWFzb24YAyABKAkiOAoSRGVsZXRlRmFjdFJlc3BvbnNlEiIKBHZpZXcYASABKAsyFC5yZXdpbmQudjEuRmFjdHNWaWV3Io0BCg5BZGRGYWN0UmVxdWVzdBIQCgh2aWRlb19pZBgBIAEoCRISCgp5ZWFyX2xhYmVsGAIgASgJEhEKCXNvcnRfeWVhchgDIAEoBRINCgVwbGFjZRgEIAEoCRINCgVjbGFpbRgFIAEoCRISCgpzb3VyY2VfdXJsGAYgASgJEhAKCGV2aWRlbmNlGAcgASgJIjUKD0FkZEZhY3RSZXNwb25zZRIiCgR2aWV3GAEgASgLMhQucmV3aW5kLnYxLkZhY3RzVmlldzLfAwoMRmFjdHNTZXJ2aWNlEkMKCEdldEZhY3RzEhoucmV3aW5kLnYxLkdldEZhY3RzUmVxdWVzdBobLnJld2luZC52MS5HZXRGYWN0c1Jlc3BvbnNlElgKD1NldEZhY3RBcHByb3ZhbBIhLnJld2luZC52MS5TZXRGYWN0QXBwcm92YWxSZXF1ZXN0GiIucmV3aW5kLnYxLlNldEZhY3RBcHByb3ZhbFJlc3BvbnNlElgKD0FwcHJvdmVBbGxGYWN0cxIhLnJld2luZC52MS5BcHByb3ZlQWxsRmFjdHNSZXF1ZXN0GiIucmV3aW5kLnYxLkFwcHJvdmVBbGxGYWN0c1Jlc3BvbnNlEkkKClVwZGF0ZUZhY3QSHC5yZXdpbmQudjEuVXBkYXRlRmFjdFJlcXVlc3QaHS5yZXdpbmQudjEuVXBkYXRlRmFjdFJlc3BvbnNlEkkKCkRlbGV0ZUZhY3QSHC5yZXdpbmQudjEuRGVsZXRlRmFjdFJlcXVlc3QaHS5yZXdpbmQudjEuRGVsZXRlRmFjdFJlc3BvbnNlEkAKB0FkZEZhY3QSGS5yZXdpbmQudjEuQWRkRmFjdFJlcXVlc3QaGi5yZXdpbmQudjEuQWRkRmFjdFJlc3BvbnNlYgZwcm90bzM", [file_rewind_v1_research]);
+  fileDesc("ChVyZXdpbmQvdjEvZmFjdHMucHJvdG8SCXJld2luZC52MSKwAQoJRmFjdHNWaWV3Eg4KBmV4aXN0cxgBIAEoCBIjCgVzaGVldBgCIAEoCzIULnJld2luZC52MS5GYWN0U2hlZXQSEwoLY2FuX2FwcHJvdmUYAyABKAgSGAoQYXBwcm92YWxfYmxvY2tlchgEIAEoCRIWCg5hcHByb3ZlZF9jb3VudBgFIAEoBRITCgtncm91cF9jb3VudBgGIAEoBRISCgpncm91cF9ub3VuGAcgASgJIiMKD0dldEZhY3RzUmVxdWVzdBIQCgh2aWRlb19pZBgBIAEoCSI2ChBHZXRGYWN0c1Jlc3BvbnNlEiIKBHZpZXcYASABKAsyFC5yZXdpbmQudjEuRmFjdHNWaWV3Ik0KFlNldEZhY3RBcHByb3ZhbFJlcXVlc3QSEAoIdmlkZW9faWQYASABKAkSDwoHZmFjdF9pZBgCIAEoCRIQCghhcHByb3ZlZBgDIAEoCCI9ChdTZXRGYWN0QXBwcm92YWxSZXNwb25zZRIiCgR2aWV3GAEgASgLMhQucmV3aW5kLnYxLkZhY3RzVmlldyI8ChZBcHByb3ZlQWxsRmFjdHNSZXF1ZXN0EhAKCHZpZGVvX2lkGAEgASgJEhAKCGFwcHJvdmVkGAIgASgIIj0KF0FwcHJvdmVBbGxGYWN0c1Jlc3BvbnNlEiIKBHZpZXcYASABKAsyFC5yZXdpbmQudjEuRmFjdHNWaWV3IncKEVVwZGF0ZUZhY3RSZXF1ZXN0EhAKCHZpZGVvX2lkGAEgASgJEg8KB2ZhY3RfaWQYAiABKAkSDQoFbGFiZWwYAyABKAkSEAoIc29ydF9rZXkYBCABKAMSDwoHY29udGV4dBgFIAEoCRINCgVjbGFpbRgGIAEoCSI4ChJVcGRhdGVGYWN0UmVzcG9uc2USIgoEdmlldxgBIAEoCzIULnJld2luZC52MS5GYWN0c1ZpZXciRgoRRGVsZXRlRmFjdFJlcXVlc3QSEAoIdmlkZW9faWQYASABKAkSDwoHZmFjdF9pZBgCIAEoCRIOCgZyZWFzb24YAyABKAkiOAoSRGVsZXRlRmFjdFJlc3BvbnNlEiIKBHZpZXcYASABKAsyFC5yZXdpbmQudjEuRmFjdHNWaWV3IokBCg5BZGRGYWN0UmVxdWVzdBIQCgh2aWRlb19pZBgBIAEoCRINCgVsYWJlbBgCIAEoCRIQCghzb3J0X2tleRgDIAEoAxIPCgdjb250ZXh0GAQgASgJEg0KBWNsYWltGAUgASgJEhIKCnNvdXJjZV91cmwYBiABKAkSEAoIZXZpZGVuY2UYByABKAkiNQoPQWRkRmFjdFJlc3BvbnNlEiIKBHZpZXcYASABKAsyFC5yZXdpbmQudjEuRmFjdHNWaWV3Mt8DCgxGYWN0c1NlcnZpY2USQwoIR2V0RmFjdHMSGi5yZXdpbmQudjEuR2V0RmFjdHNSZXF1ZXN0GhsucmV3aW5kLnYxLkdldEZhY3RzUmVzcG9uc2USWAoPU2V0RmFjdEFwcHJvdmFsEiEucmV3aW5kLnYxLlNldEZhY3RBcHByb3ZhbFJlcXVlc3QaIi5yZXdpbmQudjEuU2V0RmFjdEFwcHJvdmFsUmVzcG9uc2USWAoPQXBwcm92ZUFsbEZhY3RzEiEucmV3aW5kLnYxLkFwcHJvdmVBbGxGYWN0c1JlcXVlc3QaIi5yZXdpbmQudjEuQXBwcm92ZUFsbEZhY3RzUmVzcG9uc2USSQoKVXBkYXRlRmFjdBIcLnJld2luZC52MS5VcGRhdGVGYWN0UmVxdWVzdBodLnJld2luZC52MS5VcGRhdGVGYWN0UmVzcG9uc2USSQoKRGVsZXRlRmFjdBIcLnJld2luZC52MS5EZWxldGVGYWN0UmVxdWVzdBodLnJld2luZC52MS5EZWxldGVGYWN0UmVzcG9uc2USQAoHQWRkRmFjdBIZLnJld2luZC52MS5BZGRGYWN0UmVxdWVzdBoaLnJld2luZC52MS5BZGRGYWN0UmVzcG9uc2ViBnByb3RvMw", [file_rewind_v1_research]);
 
 /**
  * FactsView is the whole reviewable state of Gate A.
@@ -52,9 +52,17 @@ export type FactsView = Message<"rewind.v1.FactsView"> & {
   approvedCount: number;
 
   /**
-   * @generated from field: int32 era_count = 6;
+   * How many distinct groups the approved items span, and what a group is
+   * called in this format.
+   *
+   * @generated from field: int32 group_count = 6;
    */
-  eraCount: number;
+  groupCount: number;
+
+  /**
+   * @generated from field: string group_noun = 7;
+   */
+  groupNoun: string;
 };
 
 /**
@@ -200,19 +208,21 @@ export type UpdateFactRequest = Message<"rewind.v1.UpdateFactRequest"> & {
   /**
    * Only these fields are editable; evidence and source_url are not.
    *
-   * @generated from field: string year_label = 3;
+   * @generated from field: string label = 3;
    */
-  yearLabel: string;
+  label: string;
 
   /**
-   * @generated from field: int32 sort_year = 4;
+   * see Fact.sort_key
+   *
+   * @generated from field: int64 sort_key = 4;
    */
-  sortYear: number;
+  sortKey: bigint;
 
   /**
-   * @generated from field: string place = 5;
+   * @generated from field: string context = 5;
    */
-  place: string;
+  context: string;
 
   /**
    * @generated from field: string claim = 6;
@@ -300,19 +310,21 @@ export type AddFactRequest = Message<"rewind.v1.AddFactRequest"> & {
   videoId: string;
 
   /**
-   * @generated from field: string year_label = 2;
+   * @generated from field: string label = 2;
    */
-  yearLabel: string;
+  label: string;
 
   /**
-   * @generated from field: int32 sort_year = 3;
+   * see Fact.sort_key
+   *
+   * @generated from field: int64 sort_key = 3;
    */
-  sortYear: number;
+  sortKey: bigint;
 
   /**
-   * @generated from field: string place = 4;
+   * @generated from field: string context = 4;
    */
-  place: string;
+  context: string;
 
   /**
    * @generated from field: string claim = 5;

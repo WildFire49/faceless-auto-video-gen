@@ -28,7 +28,8 @@ class FactsView(_message.Message):
     CAN_APPROVE_FIELD_NUMBER: _builtins.int
     APPROVAL_BLOCKER_FIELD_NUMBER: _builtins.int
     APPROVED_COUNT_FIELD_NUMBER: _builtins.int
-    ERA_COUNT_FIELD_NUMBER: _builtins.int
+    GROUP_COUNT_FIELD_NUMBER: _builtins.int
+    GROUP_NOUN_FIELD_NUMBER: _builtins.int
     exists: _builtins.bool
     """False until the research step has run."""
     can_approve: _builtins.bool
@@ -36,7 +37,11 @@ class FactsView(_message.Message):
     approval_blocker: _builtins.str
     """e.g. "6 of 8 facts approved" or "facts span only 3 eras, need 4"."""
     approved_count: _builtins.int
-    era_count: _builtins.int
+    group_count: _builtins.int
+    """How many distinct groups the approved items span, and what a group is
+    called in this format.
+    """
+    group_noun: _builtins.str
     @_builtins.property
     def sheet(self) -> _research_pb2.FactSheet: ...
     def __init__(
@@ -47,11 +52,12 @@ class FactsView(_message.Message):
         can_approve: _builtins.bool = ...,
         approval_blocker: _builtins.str = ...,
         approved_count: _builtins.int = ...,
-        era_count: _builtins.int = ...,
+        group_count: _builtins.int = ...,
+        group_noun: _builtins.str = ...,
     ) -> None: ...
     _HasFieldArgType: _TypeAlias = _typing.Literal["sheet", b"sheet"]  # noqa: Y015
     def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
-    _ClearFieldArgType: _TypeAlias = _typing.Literal["approval_blocker", b"approval_blocker", "approved_count", b"approved_count", "can_approve", b"can_approve", "era_count", b"era_count", "exists", b"exists", "sheet", b"sheet"]  # noqa: Y015
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["approval_blocker", b"approval_blocker", "approved_count", b"approved_count", "can_approve", b"can_approve", "exists", b"exists", "group_count", b"group_count", "group_noun", b"group_noun", "sheet", b"sheet"]  # noqa: Y015
     def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
     def WhichOneof(self, oneof_group: _Never) -> None: ...
 
@@ -190,30 +196,31 @@ class UpdateFactRequest(_message.Message):
 
     VIDEO_ID_FIELD_NUMBER: _builtins.int
     FACT_ID_FIELD_NUMBER: _builtins.int
-    YEAR_LABEL_FIELD_NUMBER: _builtins.int
-    SORT_YEAR_FIELD_NUMBER: _builtins.int
-    PLACE_FIELD_NUMBER: _builtins.int
+    LABEL_FIELD_NUMBER: _builtins.int
+    SORT_KEY_FIELD_NUMBER: _builtins.int
+    CONTEXT_FIELD_NUMBER: _builtins.int
     CLAIM_FIELD_NUMBER: _builtins.int
     video_id: _builtins.str
     fact_id: _builtins.str
-    year_label: _builtins.str
+    label: _builtins.str
     """Only these fields are editable; evidence and source_url are not."""
-    sort_year: _builtins.int
-    place: _builtins.str
+    sort_key: _builtins.int
+    """see Fact.sort_key"""
+    context: _builtins.str
     claim: _builtins.str
     def __init__(
         self,
         *,
         video_id: _builtins.str = ...,
         fact_id: _builtins.str = ...,
-        year_label: _builtins.str = ...,
-        sort_year: _builtins.int = ...,
-        place: _builtins.str = ...,
+        label: _builtins.str = ...,
+        sort_key: _builtins.int = ...,
+        context: _builtins.str = ...,
         claim: _builtins.str = ...,
     ) -> None: ...
     _HasFieldArgType: _TypeAlias = _Never  # noqa: Y015
     def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
-    _ClearFieldArgType: _TypeAlias = _typing.Literal["claim", b"claim", "fact_id", b"fact_id", "place", b"place", "sort_year", b"sort_year", "video_id", b"video_id", "year_label", b"year_label"]  # noqa: Y015
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["claim", b"claim", "context", b"context", "fact_id", b"fact_id", "label", b"label", "sort_key", b"sort_key", "video_id", b"video_id"]  # noqa: Y015
     def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
     def WhichOneof(self, oneof_group: _Never) -> None: ...
 
@@ -290,16 +297,17 @@ class AddFactRequest(_message.Message):
     DESCRIPTOR: _descriptor.Descriptor
 
     VIDEO_ID_FIELD_NUMBER: _builtins.int
-    YEAR_LABEL_FIELD_NUMBER: _builtins.int
-    SORT_YEAR_FIELD_NUMBER: _builtins.int
-    PLACE_FIELD_NUMBER: _builtins.int
+    LABEL_FIELD_NUMBER: _builtins.int
+    SORT_KEY_FIELD_NUMBER: _builtins.int
+    CONTEXT_FIELD_NUMBER: _builtins.int
     CLAIM_FIELD_NUMBER: _builtins.int
     SOURCE_URL_FIELD_NUMBER: _builtins.int
     EVIDENCE_FIELD_NUMBER: _builtins.int
     video_id: _builtins.str
-    year_label: _builtins.str
-    sort_year: _builtins.int
-    place: _builtins.str
+    label: _builtins.str
+    sort_key: _builtins.int
+    """see Fact.sort_key"""
+    context: _builtins.str
     claim: _builtins.str
     source_url: _builtins.str
     """Required. A human-added fact still needs somewhere it came from."""
@@ -308,16 +316,16 @@ class AddFactRequest(_message.Message):
         self,
         *,
         video_id: _builtins.str = ...,
-        year_label: _builtins.str = ...,
-        sort_year: _builtins.int = ...,
-        place: _builtins.str = ...,
+        label: _builtins.str = ...,
+        sort_key: _builtins.int = ...,
+        context: _builtins.str = ...,
         claim: _builtins.str = ...,
         source_url: _builtins.str = ...,
         evidence: _builtins.str = ...,
     ) -> None: ...
     _HasFieldArgType: _TypeAlias = _Never  # noqa: Y015
     def HasField(self, field_name: _HasFieldArgType) -> _builtins.bool: ...
-    _ClearFieldArgType: _TypeAlias = _typing.Literal["claim", b"claim", "evidence", b"evidence", "place", b"place", "sort_year", b"sort_year", "source_url", b"source_url", "video_id", b"video_id", "year_label", b"year_label"]  # noqa: Y015
+    _ClearFieldArgType: _TypeAlias = _typing.Literal["claim", b"claim", "context", b"context", "evidence", b"evidence", "label", b"label", "sort_key", b"sort_key", "source_url", b"source_url", "video_id", b"video_id"]  # noqa: Y015
     def ClearField(self, field_name: _ClearFieldArgType) -> None: ...
     def WhichOneof(self, oneof_group: _Never) -> None: ...
 

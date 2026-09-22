@@ -57,8 +57,9 @@ export function GateDecisionBar({ video, view }: { video: Video; view: FactsView
         >
           <Box sx={{ flex: 1 }}>
             <Typography variant="body1" sx={{ fontWeight: 600 }}>
-              {view.approvedCount} approved across {view.eraCount} era
-              {view.eraCount === 1 ? '' : 's'}
+              {view.approvedCount} approved across {view.groupCount}{' '}
+              {view.groupNoun || 'group'}
+              {view.groupCount === 1 ? '' : 's'}
             </Typography>
             {!view.canApprove ? (
               <Typography variant="body2" color="text.secondary">

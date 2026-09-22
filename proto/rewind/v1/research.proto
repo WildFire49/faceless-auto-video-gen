@@ -11,6 +11,10 @@ import "rewind/v1/common.proto";
 // carry the exact sentence it came from. A verifier then checks that sentence
 // really appears in the fetched source, and drops anything that does not.
 // That is what makes hallucinated dates impossible rather than unlikely.
+// The format -- timeline, myth-buster, ranked list -- is chosen in
+// config/channel.yaml and owned entirely by the worker. Go never needs to know
+// which formats exist: the fact sheet declares its own review thresholds, so
+// the gate machinery works for a format written after this comment.
 service ResearchService {
   // BuildFactSheet researches a topic.
   //
@@ -40,16 +44,32 @@ message BuildFactSheetResponse {
   }
 }
 
-// Fact is one timeline entry (SPEC.md 5.2).
+// Fact is one verified item (SPEC.md 5.2).
+//
+// The field names are format-neutral on purpose. For a timeline, `label` is a
+// year and `sort_key` orders chronologically; for a myth-buster, `label` is
+// the belief and `sort_key` is how surprising the correction is. What never
+// varies is the pairing of `claim` with the `evidence` that supports it.
 message Fact {
   string id = 1; // "f1", "f2", ...
 
-  // How the year is spoken, e.g. "~9,000 years ago" or "1882".
-  string year_label = 2;
-  // Sortable year; negative for BC. -7000 means 7000 BC.
-  int32 sort_year = 3;
+  // What the narrator says to introduce this item.
+  // Timeline: "~9,000 years ago". Myth-buster: "You need 8 hours of sleep".
+  string label = 2;
 
-  string place = 4;
+  // Orders the items. Meaning is the format's: a year (negative for BC), a
+  // rank, a step number, a surprise rating.
+  //
+  // int64, not int32: asked about "iron", a model correctly returns the
+  // formation of the Earth's core at -4,600,000,000, which overflows int32 and
+  // used to crash serialization AFTER all the research work was done. Such a
+  // value is rejected on plausibility grounds by the format -- but that is a
+  // decision for the pipeline to make and report, never a failure mode of the
+  // wire format.
+  int64 sort_key = 3;
+
+  // Where or in what setting. Timeline: "Oregon, USA". Myth-buster: "health".
+  string context = 4;
   // The claim, in the narrator's words.
   string claim = 5;
 
@@ -71,6 +91,17 @@ message Fact {
   // How closely the evidence matched the source, 0..1. Surfaced at Gate A so
   // a borderline match can be eyeballed.
   double match_score = 12;
+
+  // The variety bucket this item falls in, computed by the format.
+  // Timeline: "industrial". Myth-buster: "health". Gate A requires the
+  // approved items to span several distinct groups, so a video is not eight
+  // variations on one idea.
+  string group = 13;
+
+  // True for items a human typed in themselves at the gate. Those skip the
+  // evidence verifier -- a person citing a book is the authority the verifier
+  // substitutes for -- so it matters that they stay distinguishable.
+  bool added_by_human = 14;
 }
 
 message SourceDocument {
@@ -89,9 +120,23 @@ message FactSheet {
   // Where the worker wrote facts.json. Paths, not bytes (SPEC.md 2.5).
   string facts_json_path = 4;
 
-  // How many candidates the LLM proposed and how many survived verification.
-  // Shown at Gate A: a large gap is a signal the model is drifting, and worth
-  // knowing before you trust what is left.
+  // How many candidates the LLM proposed and how many were thrown out.
+  // Shown at Gate A: a large gap is a measurement of the MODEL, not of the
+  // topic -- the one objective signal of how much a given model invents on
+  // this exact task.
   int32 candidates_extracted = 5;
   int32 candidates_rejected = 6;
+  // Why each one was thrown out, so the number is inspectable rather than
+  // merely alarming.
+  repeated string rejections = 9;
+
+  // Which content format produced this sheet, and the words to describe its
+  // variety requirement. Carried in the sheet so the gate machinery can
+  // enforce a format's rules without knowing the format exists.
+  string format = 7;
+  string group_noun = 8; // "era", "domain", "category"
+
+  // The thresholds this sheet's format requires before its gate can open.
+  int32 min_items = 10;
+  int32 min_groups = 11;
 }

@@ -1,9 +1,14 @@
 # REWIND — Faceless History Shorts Studio
 ### Technical Specification v2.1 — Go API · Python AI (gRPC) · Next.js + MUI
 
-> **Series concept:** Every episode takes an everyday object (iron, mouse, sandals…) and time-travels
-> from its oldest version to today, one era every ~5 seconds. Real, sourced history — told with dry,
-> quirky humor and comparisons to what's trending *right now* (Birkenstocks, Stanley cups, AirPods…).
+> **What this is:** A studio for short-form video where **every claim on screen is traceable to a
+> source a human approved**. That is the product. The *kind* of video is a **content format**,
+> chosen in one line of config — not something baked into the code.
+>
+> **Shipped formats:** `history_timeline` (the original series concept: an everyday object traced
+> from its oldest known version to today, one era every ~5 seconds) and `myth_vs_fact` (widely
+> held beliefs paired with the sourced correction). Adding a format is one file
+> (SPEC.md §14.2); nothing else in the pipeline changes.
 >
 > **Golden rule:** The machine does the busywork. A human approves every creative decision.
 > Nothing is ever published without passing all review gates.

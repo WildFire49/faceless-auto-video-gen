@@ -55,7 +55,10 @@ message FactsView {
   string approval_blocker = 4;
 
   int32 approved_count = 5;
-  int32 era_count = 6;
+  // How many distinct groups the approved items span, and what a group is
+  // called in this format.
+  int32 group_count = 6;
+  string group_noun = 7;
 }
 
 message GetFactsRequest {
@@ -86,9 +89,9 @@ message UpdateFactRequest {
   string video_id = 1;
   string fact_id = 2;
   // Only these fields are editable; evidence and source_url are not.
-  string year_label = 3;
-  int32 sort_year = 4;
-  string place = 5;
+  string label = 3;
+  int64 sort_key = 4; // see Fact.sort_key
+  string context = 5;
   string claim = 6;
 }
 message UpdateFactResponse {
@@ -107,9 +110,9 @@ message DeleteFactResponse {
 
 message AddFactRequest {
   string video_id = 1;
-  string year_label = 2;
-  int32 sort_year = 3;
-  string place = 4;
+  string label = 2;
+  int64 sort_key = 3; // see Fact.sort_key
+  string context = 4;
   string claim = 5;
   // Required. A human-added fact still needs somewhere it came from.
   string source_url = 6;

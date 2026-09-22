@@ -45,11 +45,18 @@ func newFactsCommand(deps Deps) *cobra.Command {
 				return nil
 			}
 
-			fmt.Fprintf(deps.Out, "%s — %d facts from %d source(s)\n\n",
-				view.Sheet.Topic, len(view.Sheet.Facts), len(view.Sheet.Sources))
+			fmt.Fprintf(deps.Out, "%s — %d facts from %d source(s) [format: %s]\n",
+				view.Sheet.Topic, len(view.Sheet.Facts), len(view.Sheet.Sources),
+				view.Sheet.Format)
+			if view.Sheet.CandidatesExtracted > 0 {
+				fmt.Fprintf(deps.Out,
+					"The model proposed %d; %d were rejected as unverifiable or unusable.\n",
+					view.Sheet.CandidatesExtracted, view.Sheet.CandidatesRejected)
+			}
+			fmt.Fprintln(deps.Out)
 
 			w := tabwriter.NewWriter(deps.Out, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "ID\tOK\tYEAR\tCLAIM\tCONFIDENCE\tSOURCE")
+			fmt.Fprintln(w, "ID\tOK\tLABEL\tCLAIM\tCONFIDENCE\tSOURCE")
 			for _, f := range view.Sheet.Facts {
 				tick := " "
 				if f.Approved {
@@ -61,7 +68,7 @@ func newFactsCommand(deps Deps) *cobra.Command {
 				}
 				fmt.Fprintf(w, "%s\t[%s]\t%s\t%s\t%s\t%s\n",
 					f.ID, tick,
-					truncate(f.YearLabel, 16),
+					truncate(f.Label, 24),
 					truncate(f.Claim, 52),
 					confidence,
 					truncate(f.SourceTitle, 24),
@@ -84,8 +91,8 @@ func newFactsCommand(deps Deps) *cobra.Command {
 // printReadiness reports whether Gate A can be approved, and what is missing.
 func printReadiness(out io.Writer, view *service.FactsView) {
 	if view.Readiness.CanApprove {
-		fmt.Fprintf(out, "Gate A is ready: %d facts approved across %d eras.\n",
-			view.Readiness.Approved, view.Readiness.Eras)
+		fmt.Fprintf(out, "Gate A is ready: %d facts approved across %d %ss.\n",
+			view.Readiness.Approved, view.Readiness.Groups, view.Readiness.GroupNoun)
 		fmt.Fprintln(out, "Approve it with: rewind approve <video_id> A")
 		return
 	}
