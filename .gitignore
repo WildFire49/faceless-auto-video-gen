@@ -1,0 +1,50 @@
+# ── secrets ──
+.env
+*.env.local
+client_secret*.json
+token*.json
+credentials*.json
+
+# ── local state & generated media ──
+rewind.db
+rewind.db-wal
+rewind.db-shm
+projects/
+trends_cache.json
+
+# ── large / personal assets (keep folders, ignore contents) ──
+assets/voice/*.wav
+assets/music/*
+!assets/music/bpm.yaml
+assets/sfx/*
+!assets/sfx/.gitkeep
+
+# ── Go ──
+/api/bin/
+*.exe
+*.test
+*.out
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# ── Node / Next.js ──
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+.npm
+
+# ── editors / OS ──
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
