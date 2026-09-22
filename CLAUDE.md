@@ -35,6 +35,43 @@ Three services in one monorepo, talking over a generated contract:
   both sides. Never hand-write a type that a generated one already covers.
 - **Messages carry paths, not bytes.** Never stream media over gRPC.
 
+## Modularity rules (SPEC.md §14) — apply to every file you write
+
+**The dependency rule.** Dependencies point inward only:
+`transport/handlers/pages → service/use-cases → domain/core`, with adapters implementing
+interfaces the domain declares. `domain/` (Go) and `*/base.py` (Python) import nothing from
+this project. Business logic depends on interfaces, never on a driver.
+
+**The plug-and-play contract.** For every swappable piece (LLM, voice engine, image backend,
+research source, trend source, ASR, renderer, style preset, validator rule, storage, uploader):
+
+> Adding or replacing a provider = **one new file + one registry line + one config value.**
+> No existing file may be edited.
+
+If a swap would require editing a caller, the abstraction is wrong — fix the abstraction, not
+the caller. Before adding a second implementation of anything, extract the interface first.
+
+**Wiring happens in exactly one place per service** — `cmd/rewind-api/main.go`,
+`ai/rewind_ai/core/container.py`, `web/lib/api/client.ts`. Only those files may name a concrete
+implementation. Nothing else constructs its own dependencies. No globals, no singletons.
+
+**Patterns to use** (see §14.3 for where): Strategy, Registry+Factory, Ports & Adapters,
+Repository, constructor DI, Template Method, Chain of Responsibility (validator rules),
+Builder (prompts), Decorator/Middleware (retry, logging, trace id), Observer (progress events),
+table-driven State, Null Object/Fake (offline tests), Facade (services).
+
+**Patterns to avoid:** deep inheritance, singletons, service locators, global mutable state,
+and grab-bag `utils.py` / `helpers.py` / `common.py` / `manager.go` / `misc/` packages. Shared
+code goes in `platform/` (Go) or `core/` (Python) in a file named after its one job.
+
+**Readability, enforced in review:** files ≤ 300 lines (> 500 needs a reason), functions ≤ 50
+lines, cyclomatic complexity ≤ 10, one exported concept per file, interfaces of 1–3 methods,
+no logic in transport handlers, prompts in `llm/prompts/*.jinja` not string literals, any
+human-tunable number in `config/`. Comments explain *why*.
+
+**At the start of each milestone:** state which layer each new file belongs to and which
+interface it implements.
+
 ## Engineering conventions
 
 ### Everywhere

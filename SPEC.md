@@ -308,6 +308,11 @@ TypeScript client. One proto, three languages, zero hand-written API types.
 
 ## 4. Repository layout
 
+> The numbered layers (①②③…) in the trees below are explained in **Section 14 — Code
+> Architecture, Modularity & Design Patterns**, which defines the dependency rules and the
+> plug-and-play contract. Read §14 alongside this section; the folder names only make sense
+> together with it.
+
 ```
 rewind/
 ├── CLAUDE.md                  # rules for Claude Code
@@ -327,37 +332,99 @@ rewind/
 │
 ├── api/                       # ── GO: state, gates, HTTP, orchestration ──
 │   ├── go.mod
-│   ├── cmd/
+│   ├── cmd/                       # entry points ONLY — wiring, no logic
 │   │   ├── rewind-api/main.go     # the server (port 8080)
 │   │   └── rewind/main.go         # the CLI (cobra)
 │   ├── internal/
-│   │   ├── config/                # loads ../config/*.yaml
-│   │   ├── db/                    # SQLite: schema, queries, migrations
-│   │   ├── state/                 # THE state machine — legal transitions only
-│   │   ├── gate/                  # gates A–F: approve/reject/edit + review_log
-│   │   ├── orchestrator/          # job queue; decides which RPC to call next
-│   │   ├── aiclient/              # gRPC client wrappers for the Python service
-│   │   ├── publish/               # Module 10 — YouTube upload (private only)
-│   │   ├── analytics/             # Module 11 — retention pull
-│   │   └── httpapi/               # Connect handlers consumed by web/
+│   │   ├── domain/                # ① CORE — pure types + rules, zero dependencies
+│   │   │   ├── video.go           #   Video, Status, Gate, Job entities
+│   │   │   ├── state.go           #   the state machine (legal transitions)
+│   │   │   ├── errors.go          #   sentinel errors: ErrIllegalTransition…
+│   │   │   └── ports.go           #   INTERFACES: VideoRepo, AIEngine, Uploader,
+│   │   │                          #   Clock, IDGen, ReviewLog  ← the plug points
+│   │   ├── service/               # ② USE CASES — depends on domain interfaces only
+│   │   │   ├── video_service.go   #   add / list / run / retry
+│   │   │   ├── gate_service.go    #   approve / reject / edit, writes review log
+│   │   │   ├── pipeline/          #   ③ STRATEGY + REGISTRY
+│   │   │   │   ├── step.go        #     Step interface: Name, From, To, Run
+│   │   │   │   ├── registry.go    #     name → Step; ordered pipeline lookup
+│   │   │   │   └── steps/         #     one file per step, self-registering
+│   │   │   │       ├── research.go  relevance.go  script.go  voice.go
+│   │   │   │       └── visuals.go   captions.go   render.go   publish.go
+│   │   │   └── runner.go          #   executes a Step, streams progress, sets status
+│   │   ├── adapter/               # ④ ADAPTERS — implement domain/ports.go
+│   │   │   ├── sqlite/            #   VideoRepo, JobRepo, migrations
+│   │   │   ├── aigrpc/            #   AIEngine over gRPC  (swap: aifake/)
+│   │   │   ├── aifake/            #   AIEngine in-memory  ← tests need no Python
+│   │   │   ├── youtube/           #   Uploader           (swap: uploadernoop/)
+│   │   │   └── filestore/         #   projects/<id>/ path handling
+│   │   ├── transport/             # ⑤ EDGE — translate wire ⇄ domain, nothing else
+│   │   │   ├── connectrpc/        #   handlers consumed by web/
+│   │   │   ├── middleware/        #   request id, logging, recover, validate
+│   │   │   └── cli/               #   cobra command definitions
+│   │   └── platform/              # ⑥ CROSS-CUTTING — the "utils" layer, but named
+│   │       ├── config/            #   loads ../config/*.yaml into typed structs
+│   │       ├── logging/           #   slog setup, trace-id helpers
+│   │       ├── retry/             #   backoff + jitter decorator
+│   │       ├── validate/          #   id/path guards
+│   │       └── clock/             #   real + fake Clock (deterministic tests)
 │   ├── gen/rewind/v1/             # generated Go stubs (committed)
 │   └── testdata/                  # golden files, fixture DBs
 │
 ├── ai/                        # ── PYTHON: all model + media work ──
 │   ├── pyproject.toml
 │   ├── rewind_ai/
-│   │   ├── server.py              # gRPC server (port 50051), registers all services
-│   │   ├── llm.py                 # Ollama wrapper, JSON mode + retries
-│   │   ├── research/              # Module 2  (fetch, extract, evidence verifier)
-│   │   ├── relevance/             # Module 3  (trend scan, proposals)
-│   │   ├── script/                # Module 4  (writer + validator)
-│   │   ├── voice/                 # Module 5  (Chatterbox, snapping, polish)
-│   │   ├── visuals/               # Module 6  (FLUX, storyboard)
-│   │   ├── captions/              # Module 7  (faster-whisper alignment)
-│   │   ├── audio/                 # Module 8  (music + SFX)
-│   │   ├── render/                # Module 9  (MoviePy, dead-zone, loop preview)
+│   │   ├── server.py              # builds the container, registers handlers, serves
+│   │   ├── core/                  # ① CROSS-CUTTING (the "utils" layer, named properly)
+│   │   │   ├── config.py          #   typed settings from ../config/*.yaml
+│   │   │   ├── registry.py        #   the @register decorator used by every provider
+│   │   │   ├── container.py       #   builds providers from config (composition root)
+│   │   │   ├── errors.py          #   RewindError hierarchy → gRPC status codes
+│   │   │   ├── logging.py         #   structlog + trace id from gRPC metadata
+│   │   │   ├── paths.py           #   projects/<id>/ layout — ONE place that knows it
+│   │   │   ├── io.py              #   atomic JSON read/write (write temp → rename)
+│   │   │   └── progress.py        #   ProgressEmitter → yields proto events
+│   │   ├── handlers/              # ② TRANSPORT — thin gRPC servicers, no logic
+│   │   │   ├── research.py  relevance.py  script.py  voice.py
+│   │   │   └── visual.py    caption.py    render.py  health.py
+│   │   ├── llm/                   # ③ SWAPPABLE PROVIDER (template for all of them)
+│   │   │   ├── base.py            #   class LLM(Protocol): complete_json(...)
+│   │   │   ├── prompts/           #   jinja templates — prompts are DATA, not code
+│   │   │   └── providers/
+│   │   │       ├── ollama.py      #   @register("llm", "ollama")
+│   │   │       └── openai_compat.py
+│   │   ├── research/              # Module 2
+│   │   │   ├── base.py            #   SourceFetcher protocol
+│   │   │   ├── service.py         #   orchestrates fetch → extract → verify
+│   │   │   ├── verifier.py        #   evidence checker (pure, heavily tested)
+│   │   │   └── sources/           #   wikipedia.py · user_url.py · searxng.py
+│   │   ├── relevance/             # Module 3
+│   │   │   ├── base.py  service.py
+│   │   │   └── sources/           #   google_trends.py · wiki_pageviews.py
+│   │   │                          #   youtube_popular.py · reddit.py · manual.py
+│   │   ├── script/                # Module 4
+│   │   │   ├── writer.py
+│   │   │   └── rules/             #   ④ one file per validator rule, self-registering
+│   │   │       ├── base.py        #     class Rule(Protocol): check(script) -> []
+│   │   │       ├── word_limit.py  beat_count.py  numbers_match_facts.py
+│   │   │       └── loop_echo.py   max_refs.py    sfx_limit.py
+│   │   ├── voice/                 # Module 5
+│   │   │   ├── base.py            #   VoiceEngine protocol
+│   │   │   ├── snapping.py  polish.py
+│   │   │   └── providers/         #   chatterbox.py · kokoro.py · piper.py
+│   │   ├── visuals/               # Module 6
+│   │   │   ├── base.py  prompt_builder.py  storyboard.py
+│   │   │   └── providers/         #   flux_diffusers.py · comfyui_api.py · sdxl.py
+│   │   ├── captions/              # Module 7
+│   │   │   ├── base.py  aligner.py
+│   │   │   └── providers/         #   faster_whisper.py · whisperx.py
+│   │   ├── audio/                 # Module 8  (music selection, ducking, SFX)
+│   │   ├── render/                # Module 9
+│   │   │   ├── base.py  compositor.py  dead_zone.py  loop_preview.py
+│   │   │   ├── presets/           #   caption/motion/transition strategies
+│   │   │   └── providers/         #   moviepy.py · ffmpeg_direct.py
 │   │   └── gen/rewind/v1/         # generated Python stubs (committed)
-│   └── tests/                     # pytest + offline fixtures
+│   └── tests/                     # pytest + offline fixtures (mirrors the tree above)
 │
 ├── web/                       # ── NEXT.JS: the review dashboard ──
 │   ├── package.json
@@ -371,9 +438,24 @@ rewind/
 │   │       ├── voice/page.tsx        # Gate D
 │   │       ├── storyboard/page.tsx   # Gate E
 │   │       └── final/page.tsx        # Gate F
-│   ├── components/                # GateShell, StatusChip, BeatRow, AudioBeat…
-│   ├── theme/                     # theme.ts, tokens.ts, motion.ts  (Section 8.1)
-│   └── lib/gen/rewind/v1/         # generated TS client (committed)
+│   ├── features/                  # ① FEATURE-FIRST — a gate owns its own folder
+│   │   ├── gates/
+│   │   │   ├── registry.ts        #   gate letter → GateDefinition (strategy table)
+│   │   │   ├── types.ts           #   GateDefinition: component, canApprove, label
+│   │   │   ├── GateShell.tsx      #   shared chrome: header, progress dots, actions
+│   │   │   ├── facts/             #   FactsGate.tsx + hooks + local types
+│   │   │   ├── references/  script/  voice/  storyboard/  final/
+│   │   └── videos/                #   list table, status chips, filters
+│   ├── components/ui/             # ② PRIMITIVES — themed, dumb, reusable
+│   │   ├── Surface.tsx  Stack.tsx  ActionBar.tsx  StatusChip.tsx
+│   │   └── ProgressStream.tsx  EmptyState.tsx  ConfirmDialog.tsx
+│   ├── lib/                       # ③ CROSS-CUTTING
+│   │   ├── api/client.ts          #   one configured Connect client — the only one
+│   │   ├── api/queries.ts         #   TanStack query keys + hooks per RPC
+│   │   ├── format.ts  guards.ts   #   pure helpers (unit-tested)
+│   │   └── gen/rewind/v1/         #   generated TS client (committed)
+│   ├── hooks/                     # useJobProgress, useGateNavigation, useReducedMotion
+│   └── theme/                     # tokens.ts, theme.ts, motion.ts  (Section 8.1)
 │
 ├── config/                    # shared by all three services
 │   ├── channel.yaml           # channel name, voice settings, art style, beat length
@@ -940,7 +1022,7 @@ with something you can actually click.
 
 | # | Milestone | Deliverable | Acceptance / what you review |
 |---|---|---|---|
-| **M0** | Plumbing | Monorepo, `Makefile`, `buf` + `common.proto` + `health.proto`, codegen for all 3 languages, Go server with one Connect endpoint, Python gRPC server with `HealthService`, Next.js app with MUI theme + one page | `make dev` starts all three. The home page shows a green "AI service healthy" chip fetched Next.js → Go → gRPC → Python. **This proves the whole spine works before any AI exists.** |
+| **M0** | Plumbing | Monorepo, `Makefile`, `buf` + `common.proto` + `health.proto`, codegen for all 3 languages, Go server with one Connect endpoint, Python gRPC server with `HealthService`, Next.js app with MUI theme + one page. **Plus the §14 skeleton: every layer folder created with its interface file and one real implementation + one fake**, `core/registry.py`, `core/container.py`, `domain/ports.go`, lint rules wired into CI | `make dev` starts all three. The home page shows a green "AI service healthy" chip fetched Next.js → Go → gRPC → Python. `go test ./...` passes with the AI service **stopped** (fake adapter). **This proves the spine and the seams before any AI exists.** |
 | **M1** | State & gates (Go) | SQLite schema + goose migrations, state machine, gate transitions, review log, cobra CLI (`add/queue/run/retry`), Connect API + generated TS client, home DataGrid | `rewind add "iron"` → appears in CLI *and* in the browser table; illegal-transition test passes; `rejected_to` works |
 | **M2** | Research + Gate A | `research.proto`, Python: Wikipedia fetch + Ollama extraction + evidence verifier; Go: orchestration + job progress; web: Gate A page | Run "iron": ≥ 8 facts, every evidence string found in source; approve in the browser; `review_log.json` records it |
 | **M3** | Relevance + Gate B | reference bank, live trend scan + daily cache, proposal generator, Gate B cards | "sandals" proposes Birkenstock/Crocs-type refs; max-3 rule enforced in Go |
@@ -1045,8 +1127,8 @@ can be deployed later without a rewrite.
 | Job | Runs |
 |---|---|
 | `proto` | `buf lint`, `buf format --diff --exit-code`, `buf breaking`, then `buf generate` and fail if generated code differs from what is committed |
-| `go` | `go vet`, `staticcheck`, `golangci-lint`, `go test -race -cover ./...` |
-| `python` | `ruff check`, `ruff format --check`, `mypy`, `pytest` (offline fixtures only — no GPU on CI) |
+| `go` | `go vet`, `staticcheck`, `golangci-lint` (incl. `gocyclo`, `depguard` enforcing the §14.1 layer rule), `go test -race -cover ./...` |
+| `python` | `ruff check` (incl. `C901` complexity), `ruff format --check`, `mypy --strict`, `import-linter` enforcing the §14.1 layer rule, `pytest` (offline fixtures only — no GPU on CI) |
 | `web` | `tsc --noEmit`, `eslint`, `vitest run`, `next build` |
 | `smoke` | `make smoke` on Linux |
 
@@ -1093,6 +1175,141 @@ All five must pass before merge. Branch protection on `main`.
 - `.editorconfig`, plus pre-commit hooks running `buf format`, `gofmt`, `ruff`, `prettier`.
 
 **☐ APPROVE Section 13** — production standards
+
+---
+
+---
+
+## 14. Code Architecture, Modularity & Design Patterns
+
+> Section 4 says *where files go*. This section says *how the code inside them is allowed to
+> depend on each other*, and which patterns to reach for. Claude Code must follow this in every
+> milestone. When a new file doesn't obviously belong to a layer below, that's a design smell —
+> stop and ask.
+
+### 14.1 The one dependency rule
+
+Every service is layered, and **dependencies only ever point inward**:
+
+```
+  transport / handlers / pages      ← knows about the wire & the user
+        │
+        ▼
+  service / use cases               ← knows the workflow
+        │
+        ▼
+  domain / core                     ← knows the rules. Depends on NOTHING.
+        ▲
+        │ implements interfaces defined in domain
+  adapters (sqlite, gRPC, youtube, flux, chatterbox…)
+```
+
+Concretely, three rules that are easy to check in review:
+
+1. **`domain/` (Go) and `*/base.py` (Python) import nothing from the project.** Pure types,
+   protocols and rules. If it needs a database or a model, it doesn't belong there.
+2. **Business logic never imports a driver.** `service/` talks to a `VideoRepo` interface, not to
+   SQLite. `research/service.py` talks to an `LLM` protocol, not to Ollama.
+3. **Everything is wired in exactly one place** — `cmd/rewind-api/main.go` in Go,
+   `core/container.py` in Python, `lib/api/client.ts` in the web app. These are the only files
+   allowed to name a concrete implementation. Nothing anywhere else constructs its own dependency.
+
+**Why this matters to you specifically:** it is what makes `go test` run without Python, and
+`pytest` run without a GPU or the internet. Tests inject a fake; the code can't tell the difference.
+
+### 14.2 The plug-and-play contract
+
+This is the rule that delivers what you asked for. For **every** swappable piece:
+
+> **Adding or replacing a provider = create one new file + add one registry line + change one
+> config value. No existing file may be edited.**
+
+If a swap requires touching a caller, the abstraction is wrong — fix the abstraction, not the
+caller. In review, this is a hard gate.
+
+**What is swappable, and by which config key:**
+
+| Piece | Interface | Providers shipped | Config key |
+|---|---|---|---|
+| LLM | `llm/base.py::LLM` | ollama, openai_compat | `llm.provider` |
+| Research source | `research/base.py::SourceFetcher` | wikipedia, user_url, searxng | `research.sources[]` |
+| Trend source | `relevance/base.py::TrendSource` | google_trends, wiki_pageviews, youtube_popular, reddit, manual | `relevance.sources[]` |
+| Voice engine | `voice/base.py::VoiceEngine` | chatterbox, kokoro, piper | `voice.engine` |
+| Image backend | `visuals/base.py::ImageBackend` | flux_diffusers, comfyui_api, sdxl | `visuals.backend` |
+| Caption/ASR | `captions/base.py::Aligner` | faster_whisper, whisperx | `captions.engine` |
+| Renderer | `render/base.py::Renderer` | moviepy, ffmpeg_direct | `render.backend` |
+| Style preset | `render/presets/` | ≥5 presets | `render.preset` (rotated per video) |
+| Validator rule | `script/rules/base.py::Rule` | one file per rule | `script.rules[]` |
+| Storage | `domain/ports.go::VideoRepo` | sqlite, (postgres later) | `api.db_driver` |
+| AI transport | `domain/ports.go::AIEngine` | aigrpc, aifake | injected in `main.go` |
+| Uploader | `domain/ports.go::Uploader` | youtube, noop | `publish.target` |
+
+**A worked example — adding Piper as a third voice engine:**
+
+1. Write `ai/rewind_ai/voice/providers/piper.py`:
+   ```python
+   from rewind_ai.core.registry import register
+   from rewind_ai.voice.base import VoiceEngine, BeatAudio
+
+   @register("voice", "piper")                 # ← the one registry line
+   class PiperEngine(VoiceEngine):
+       def __init__(self, cfg: VoiceConfig) -> None: ...
+       def synthesize_beat(self, text: str, emotion: float, seed: int) -> BeatAudio: ...
+   ```
+2. Set `voice.engine: piper` in `config/channel.yaml`.
+3. Done. `snapping.py`, `polish.py`, `handlers/voice.py`, the Go orchestrator and the Gate D page
+   are untouched — none of them ever knew which engine was running.
+
+### 14.3 Patterns used, and exactly where
+
+Patterns are used where they pay for themselves — not decoratively. Each one below is load-bearing.
+
+| Pattern | Where | What it buys |
+|---|---|---|
+| **Strategy** | every row in the §14.2 table | swap an implementation without touching callers |
+| **Registry + Factory** | `core/registry.py`, `service/pipeline/registry.go` | providers self-register by name; the factory resolves config → instance. No `if provider == "x"` chains anywhere |
+| **Ports & Adapters** | `domain/ports.go` ⇄ `adapter/*` | Go's core has zero knowledge of SQLite, gRPC or YouTube |
+| **Repository** | `VideoRepo`, `JobRepo` | all SQL in one package; the rest of the app sees methods, never a query |
+| **Dependency Injection (constructor)** | everywhere; wired in `main.go` / `container.py` | no globals, no singletons, no import-time side effects. Tests pass fakes in |
+| **Template Method** | `render/base.py`, `pipeline/steps/*.go` | every step is `prepare → run → persist → emit`; a new step fills in the blanks and inherits idempotency, progress and error handling for free |
+| **Chain of Responsibility** | `script/rules/` | each validator rule is an independent file returning violations; add or remove one from config with no edits elsewhere |
+| **Builder** | `visuals/prompt_builder.py`, script prompt assembly | image prompt = subject + era + art style + negatives, composed step by step and unit-testable without a GPU |
+| **Decorator / Middleware** | `platform/retry`, gRPC interceptors, `transport/middleware` | retry, logging, trace-id and validation added without touching business logic |
+| **Observer / event stream** | `core/progress.py` → gRPC stream → SQLite → UI | one progress mechanism for every long job |
+| **State pattern (table-driven)** | `domain/state.go` | legal transitions are data, not scattered `if` statements |
+| **Null Object / Fake** | `adapter/aifake`, `uploadernoop`, `clock.Fake` | complete offline test runs and a safe dry-run mode |
+| **Facade** | `service/*_service.go` | the transport layer calls one method per use case, never orchestrates internals |
+
+**Explicitly avoided:** inheritance hierarchies deeper than one level, singletons, service locators,
+global mutable state, and "manager"/"helper"/"misc" packages. A `utils` bucket that anything may
+import becomes a dependency cycle — hence `platform/` (Go) and `core/` (Python), where every file
+has one clear job and a name that says it.
+
+### 14.4 Readability rules (enforced in review)
+
+- **Naming says the job.** `voice/providers/chatterbox.py`, not `voice/impl2.py`. No `utils.py`,
+  `helpers.py`, `common.py`, `manager.go`, `misc/`.
+- **File size:** aim ≤ 300 lines; > 500 needs a reason. **Function size:** ≤ 50 lines.
+- **Cyclomatic complexity ≤ 10** (`golangci-lint` gocyclo, `ruff C901`). CI enforces this.
+- **One exported concept per file.** A reader should guess a file's contents from its path.
+- **Interfaces are small** — 1–3 methods. A 10-method interface is a layering mistake.
+- **Interfaces are declared where they are *used*, not where they are implemented** (Go idiom).
+- **No logic in transport.** A gRPC servicer or Connect handler may only: validate, map to a
+  domain call, map the result back, emit progress. If there's an `if` about history or beats in a
+  handler, it's in the wrong file.
+- **Prompts are data.** LLM prompts live in `llm/prompts/*.jinja`, never in Python string literals,
+  so you can tune them without touching code.
+- **Config over constants.** Any number a human might want to change lives in `config/`.
+- **Comments explain *why*.** The code already says what.
+
+### 14.5 How Claude Code must apply this
+
+At the start of each milestone, state which layer each new file belongs to and which interface it
+implements. Before adding a second implementation of anything, extract the interface first.
+If a milestone seems to require editing a caller in order to add a provider, stop and propose a
+spec change rather than working around it.
+
+**☐ APPROVE Section 14** — layering, plug-and-play contract, pattern choices
 
 ---
 
