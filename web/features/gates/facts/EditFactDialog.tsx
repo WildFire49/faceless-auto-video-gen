@@ -23,7 +23,7 @@ import { useEffect, useState } from 'react';
 
 import type { useFactMutations } from '@/lib/api/facts';
 import type { Fact } from '@/lib/gen/rewind/v1/research_pb';
-import { palette } from '@/theme/tokens';
+import { schemeColour } from '@/theme/colour';
 
 type Mutations = ReturnType<typeof useFactMutations>;
 
@@ -110,7 +110,7 @@ export function EditFactDialog({
 
           <Box
             sx={{
-              borderLeft: `2px solid ${palette.light.hairline}`,
+              borderLeft: `2px solid ${schemeColour.hairline}`,
               pl: 2,
               py: 0.5,
             }}

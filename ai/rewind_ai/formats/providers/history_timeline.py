@@ -133,8 +133,11 @@ ABSOLUTE RULES:
 2. For every event, copy the supporting sentence from the source into
    "evidence" EXACTLY as it appears, character for character. Do not
    paraphrase, summarise, shorten or correct it.
-3. If the source does not state a date for an event, do not include that
-   event. An undated event is useless to us.
+3. The date must be IN the evidence sentence you copy. If the sentence that
+   supports the event does not itself state the date, skip the event. Do not
+   take a date from elsewhere in the text, and never convert it ("2631 BC"
+   stays "2631 BC", never "4,600 years ago"). Every number in year_label and
+   claim must appear in evidence, or the event is thrown away.
 4. Prefer events that mark a real change in how the thing was made or used.
    Skip trivia, prices, and anything about a single individual's life.
 5. Ignore geological or astronomical timescales. We want human history, not

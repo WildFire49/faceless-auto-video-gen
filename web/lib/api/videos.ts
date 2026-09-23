@@ -8,12 +8,7 @@
 
 'use client';
 
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-  type UseQueryResult,
-} from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 
 import { rewindClient, videoClient } from './client';
 import { Gate, VideoStatus, type Video } from '@/lib/gen/rewind/v1/video_pb';
@@ -119,6 +114,73 @@ export const GATE_ORDER: Gate[] = [
   Gate.E_STORYBOARD,
   Gate.F_FINAL,
 ];
+
+/** The status each gate's approval moves a video to, in GATE_ORDER. */
+const APPROVED_STATUS: VideoStatus[] = [
+  VideoStatus.FACTS_APPROVED,
+  VideoStatus.REFS_APPROVED,
+  VideoStatus.SCRIPT_APPROVED,
+  VideoStatus.VOICE_APPROVED,
+  VideoStatus.STORYBOARD_APPROVED,
+  VideoStatus.FINAL_APPROVED,
+];
+
+/**
+ * How many gates a video has passed.
+ *
+ * Relies on the wire enum being ordered along the pipeline -- true for every
+ * status EXCEPT ERROR, which is numbered last (24) and so compared as "past
+ * every gate". For three milestones every failed video in the queue showed six
+ * green dots: failure rendered as complete. A failed video is judged by where
+ * it failed (`retryFrom`), not by its error status.
+ */
+export function gatesPassed(video: Video): number {
+  const where = video.status === VideoStatus.ERROR ? video.retryFrom : video.status;
+  return APPROVED_STATUS.filter((approved) => where >= approved).length;
+}
+
+/** The page that reviews each gate, for gates whose page exists. */
+export const GATE_PAGES: Partial<Record<Gate, string>> = {
+  [Gate.A_FACTS]: 'facts',
+  [Gate.B_REFERENCES]: 'references',
+};
+
+/**
+ * Where clicking a video should take you: the gate waiting for you, or else
+ * the most recent gate you already approved, so a decision can be looked at
+ * again. Null when there is nothing to show yet.
+ */
+export function reviewRouteOf(video: Video): string | null {
+  const waiting = GATE_PAGES[video.awaitingGate];
+  if (waiting) return `/v/${video.id}/${waiting}`;
+
+  for (let i = gatesPassed(video) - 1; i >= 0; i -= 1) {
+    const gate = GATE_ORDER[i];
+    const page = gate === undefined ? undefined : GATE_PAGES[gate];
+    if (page) return `/v/${video.id}/${page}`;
+  }
+  return null;
+}
+
+/**
+ * Whether a gate's sheet can still be changed. Mirrors the API's rule
+ * (domain.RequireOpenGate): only while the video waits at that gate. The API
+ * is what enforces it; this only keeps the UI from offering what it would
+ * refuse.
+ */
+export function isGateOpen(video: Video, gate: Gate): boolean {
+  return video.awaitingGate === gate;
+}
+
+/** Re-run the step a failed video stopped at. */
+export function useRetryVideo() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (videoId: string) => videoClient.retryVideo({ videoId }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: videoKeys.all }),
+  });
+}
 
 /**
  * What kind of attention a video needs. Drives colour everywhere, so the

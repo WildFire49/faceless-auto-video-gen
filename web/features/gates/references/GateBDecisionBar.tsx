@@ -25,7 +25,7 @@ import { useState } from 'react';
 import { useGateDecision } from '@/lib/api/facts';
 import type { ReferencesView } from '@/lib/gen/rewind/v1/references_pb';
 import { Gate, VideoStatus, type Video } from '@/lib/gen/rewind/v1/video_pb';
-import { material, palette } from '@/theme/tokens';
+import { material } from '@/theme/tokens';
 
 export function GateBDecisionBar({ video, view }: { video: Video; view: ReferencesView }) {
   const router = useRouter();
@@ -43,7 +43,7 @@ export function GateBDecisionBar({ video, view }: { video: Video; view: Referenc
           position: 'sticky',
           bottom: 16,
           p: 2.5,
-          backgroundColor: palette.light.surface,
+          backgroundColor: 'surface.translucent',
           backdropFilter: material.blur,
           WebkitBackdropFilter: material.blur,
         }}
@@ -93,8 +93,8 @@ export function GateBDecisionBar({ video, view }: { video: Video; view: Referenc
 
         {view.staleReferenceIds.length > 0 ? (
           <Alert severity="warning" sx={{ mt: 2 }}>
-            {view.staleReferenceIds.length} chosen reference has passed its freshness date. You
-            can still use it, but it will read as dated.
+            {view.staleReferenceIds.length} chosen reference has passed its freshness date. You can
+            still use it, but it will read as dated.
           </Alert>
         ) : null}
 

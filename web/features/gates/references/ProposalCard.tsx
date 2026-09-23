@@ -24,6 +24,7 @@ import Typography from '@mui/material/Typography';
 
 import { ReferenceKind, type Proposal } from '@/lib/gen/rewind/v1/relevance_pb';
 import { palette, radius } from '@/theme/tokens';
+import { opacity, schemeColour, tint } from '@/theme/colour';
 
 export interface ProposalCardProps {
   proposal: Proposal;
@@ -37,6 +38,8 @@ export interface ProposalCardProps {
   onEdit: () => void;
   onDelete: () => void;
   busy?: boolean;
+  /** The gate is closed: show the decision, offer no controls. */
+  readOnly?: boolean;
 }
 
 function kindChip(kind: ReferenceKind, freshUntil: string, stale: boolean) {
@@ -48,7 +51,7 @@ function kindChip(kind: ReferenceKind, freshUntil: string, stale: boolean) {
     };
   }
   if (kind === ReferenceKind.MANUAL) {
-    return { label: 'yours', color: palette.light.accent, icon: undefined };
+    return { label: 'yours', color: schemeColour.accent, icon: undefined };
   }
   return { label: 'evergreen', color: palette.status.ok, icon: undefined };
 }
@@ -63,6 +66,7 @@ export function ProposalCard({
   onEdit,
   onDelete,
   busy = false,
+  readOnly = false,
 }: ProposalCardProps) {
   const selected = proposal.selected;
   const chip = kindChip(proposal.kind, proposal.freshUntil, stale);
@@ -76,8 +80,8 @@ export function ProposalCard({
       sx={{
         p: 3,
         opacity: disabled ? 0.55 : 1,
-        borderColor: selected ? `${palette.light.accent}66` : palette.light.hairline,
-        backgroundColor: selected ? `${palette.light.accent}0A` : 'transparent',
+        borderColor: selected ? tint(schemeColour.accent, opacity.selected) : schemeColour.hairline,
+        backgroundColor: selected ? tint(schemeColour.accent, opacity.wash) : 'transparent',
         transition: 'opacity 160ms ease, background-color 160ms ease',
       }}
     >
@@ -92,27 +96,31 @@ export function ProposalCard({
             icon={chip.icon}
             label={chip.label}
             sx={{
-              backgroundColor: `${chip.color}18`,
-              border: `1px solid ${chip.color}55`,
+              backgroundColor: tint(chip.color, opacity.fill),
+              border: `1px solid ${tint(chip.color, opacity.outline)}`,
             }}
           />
 
           <Box sx={{ flex: 1 }} />
 
-          <Tooltip title="Edit the wording">
-            <span>
-              <IconButton size="small" onClick={onEdit} disabled={busy}>
-                <EditOutlinedIcon fontSize="small" />
-              </IconButton>
-            </span>
-          </Tooltip>
-          <Tooltip title="Remove this comparison">
-            <span>
-              <IconButton size="small" onClick={onDelete} disabled={busy}>
-                <DeleteOutlineIcon fontSize="small" />
-              </IconButton>
-            </span>
-          </Tooltip>
+          {readOnly ? null : (
+            <>
+              <Tooltip title="Edit the wording">
+                <span>
+                  <IconButton size="small" onClick={onEdit} disabled={busy}>
+                    <EditOutlinedIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Tooltip title="Remove this comparison">
+                <span>
+                  <IconButton size="small" onClick={onDelete} disabled={busy}>
+                    <DeleteOutlineIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </>
+          )}
         </Stack>
 
         {/* The line itself, set larger than everything else: it is the thing
@@ -130,7 +138,13 @@ export function ProposalCard({
         {/* What the comparison attaches to. Shown because a joke that does not
             belong to its fact is the failure mode worth catching here. */}
         {factClaim ? (
-          <Box sx={{ borderLeft: `2px solid ${palette.light.hairline}`, pl: 2, py: 0.5 }}>
+          <Box
+            sx={{
+              borderLeft: `2px solid ${schemeColour.hairline}`,
+              pl: 2,
+              py: 0.5,
+            }}
+          >
             <Typography variant="body2" color="text.secondary">
               <Box component="span" sx={{ fontWeight: 600 }}>
                 {factLabel}
@@ -141,15 +155,24 @@ export function ProposalCard({
         ) : null}
 
         <Stack direction="row" spacing={2} alignItems="center">
-          <Button
-            variant={selected ? 'contained' : 'outlined'}
-            startIcon={selected ? <CheckCircleIcon /> : <RadioButtonUncheckedIcon />}
-            onClick={() => onToggle(!selected)}
-            disabled={busy || disabled}
-            sx={{ borderRadius: radius.pill }}
-          >
-            {selected ? 'Using this' : 'Use this'}
-          </Button>
+          {readOnly ? (
+            <Chip
+              icon={selected ? <CheckCircleIcon /> : undefined}
+              label={selected ? 'Used' : 'Not used'}
+              color={selected ? 'primary' : 'default'}
+              variant={selected ? 'filled' : 'outlined'}
+            />
+          ) : (
+            <Button
+              variant={selected ? 'contained' : 'outlined'}
+              startIcon={selected ? <CheckCircleIcon /> : <RadioButtonUncheckedIcon />}
+              onClick={() => onToggle(!selected)}
+              disabled={busy || disabled}
+              sx={{ borderRadius: radius.pill }}
+            >
+              {selected ? 'Using this' : 'Use this'}
+            </Button>
+          )}
 
           {proposal.accuracyNote ? (
             <Tooltip title="What is being compared — check it is not a claim about the brand">

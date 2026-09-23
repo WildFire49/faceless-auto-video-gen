@@ -24,9 +24,11 @@ import { AddFactDialog } from './AddFactDialog';
 import { EditFactDialog } from './EditFactDialog';
 import { FactRow } from './FactRow';
 import { GateDecisionBar } from './GateDecisionBar';
+import { GateClosedBar } from '@/features/gates/GateClosedBar';
+import { isGateOpen } from '@/lib/api/videos';
 import { useFactMutations, useFacts, useLatestJob, useRunStep } from '@/lib/api/facts';
 import type { Fact } from '@/lib/gen/rewind/v1/research_pb';
-import { JobState, type Video } from '@/lib/gen/rewind/v1/video_pb';
+import { Gate, JobState, type Video } from '@/lib/gen/rewind/v1/video_pb';
 import { palette } from '@/theme/tokens';
 
 export function FactsGate({ video }: { video: Video }) {
@@ -41,6 +43,8 @@ export function FactsGate({ video }: { video: Video }) {
   const [adding, setAdding] = useState(false);
 
   const running = job.data?.state === JobState.RUNNING;
+  // Closed once approved (or before it is reached); the API refuses edits then.
+  const readOnly = !isGateOpen(video, Gate.A_FACTS);
   const view = facts.data;
   const sheet = view?.sheet;
 
@@ -68,8 +72,8 @@ export function FactsGate({ video }: { video: Video }) {
           />
 
           <Typography variant="body2" color="text.secondary">
-            Fetching sources and extracting dated events. Every claim is checked against the
-            source text before it reaches you — this takes a minute or two.
+            Fetching sources and extracting dated events. Every claim is checked against the source
+            text before it reaches you — this takes a minute or two.
           </Typography>
         </Stack>
       </Paper>
@@ -98,11 +102,7 @@ export function FactsGate({ video }: { video: Video }) {
             <Alert severity="info">{runStep.data.reason}</Alert>
           ) : null}
 
-          <Button
-            variant="contained"
-            onClick={() => runStep.mutate()}
-            disabled={runStep.isPending}
-          >
+          <Button variant="contained" onClick={() => runStep.mutate()} disabled={runStep.isPending}>
             {runStep.isPending ? 'Starting…' : 'Research this topic'}
           </Button>
         </Stack>
@@ -127,13 +127,10 @@ export function FactsGate({ video }: { video: Video }) {
           the MODEL, not about the topic — it is the one objective measure of
           how much a given model invents on this exact task. */}
       {extracted > 0 ? (
-        <Alert
-          severity={rejected > extracted / 2 ? 'warning' : 'info'}
-          sx={{ borderRadius: 2 }}
-        >
-          The model proposed <strong>{extracted}</strong> facts;{' '}
-          <strong>{rejected}</strong> were rejected because their evidence could not be found
-          in the source.{' '}
+        <Alert severity={rejected > extracted / 2 ? 'warning' : 'info'} sx={{ borderRadius: 2 }}>
+          The model proposed <strong>{extracted}</strong> facts; <strong>{rejected}</strong> were
+          rejected — either the quote was not in the source, or the fact stated a date or number
+          that its quote does not.{' '}
           {rejected > extracted / 2
             ? 'That is a lot — this model may be inventing. Worth trying another.'
             : 'The rest are quoted verbatim from the sources below.'}
@@ -151,25 +148,27 @@ export function FactsGate({ video }: { video: Video }) {
             {sheet.facts.length} facts
           </Typography>
 
-          <Stack direction="row" spacing={1}>
-            <Button
-              size="small"
-              onClick={() => mutations.approveAll.mutate(true)}
-              disabled={mutations.approveAll.isPending}
-            >
-              Approve all
-            </Button>
-            <Button
-              size="small"
-              onClick={() => mutations.approveAll.mutate(false)}
-              disabled={mutations.approveAll.isPending}
-            >
-              Clear all
-            </Button>
-            <Button size="small" startIcon={<AddIcon />} onClick={() => setAdding(true)}>
-              Add a fact
-            </Button>
-          </Stack>
+          {readOnly ? null : (
+            <Stack direction="row" spacing={1}>
+              <Button
+                size="small"
+                onClick={() => mutations.approveAll.mutate(true)}
+                disabled={mutations.approveAll.isPending}
+              >
+                Approve all
+              </Button>
+              <Button
+                size="small"
+                onClick={() => mutations.approveAll.mutate(false)}
+                disabled={mutations.approveAll.isPending}
+              >
+                Clear all
+              </Button>
+              <Button size="small" startIcon={<AddIcon />} onClick={() => setAdding(true)}>
+                Add a fact
+              </Button>
+            </Stack>
+          )}
         </Stack>
 
         <Divider />
@@ -180,13 +179,10 @@ export function FactsGate({ video }: { video: Video }) {
               key={fact.id}
               fact={fact}
               busy={mutations.setApproval.isPending}
-              onToggle={(approved) =>
-                mutations.setApproval.mutate({ factId: fact.id, approved })
-              }
+              readOnly={readOnly}
+              onToggle={(approved) => mutations.setApproval.mutate({ factId: fact.id, approved })}
               onEdit={() => setEditing(fact)}
-              onDelete={() =>
-                mutations.deleteFact.mutate({ factId: fact.id, reason: '' })
-              }
+              onDelete={() => mutations.deleteFact.mutate({ factId: fact.id, reason: '' })}
             />
           ))}
         </Stack>
@@ -208,18 +204,18 @@ export function FactsGate({ video }: { video: Video }) {
         </Stack>
       </Paper>
 
-      <GateDecisionBar video={video} view={view} />
+      {readOnly ? (
+        <GateClosedBar
+          video={video}
+          gate={Gate.A_FACTS}
+          summary={`${view.approvedCount} facts were approved for the script.`}
+        />
+      ) : (
+        <GateDecisionBar video={video} view={view} />
+      )}
 
-      <EditFactDialog
-        fact={editing}
-        onClose={() => setEditing(null)}
-        mutations={mutations}
-      />
-      <AddFactDialog
-        open={adding}
-        onClose={() => setAdding(false)}
-        mutations={mutations}
-      />
+      <EditFactDialog fact={editing} onClose={() => setEditing(null)} mutations={mutations} />
+      <AddFactDialog open={adding} onClose={() => setAdding(false)} mutations={mutations} />
     </Stack>
   );
 }

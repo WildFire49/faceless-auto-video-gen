@@ -25,9 +25,14 @@ What it proves, in order:
     9. no more than three modern references can be selected
    10. approving Gate B advances the video, and BOTH decisions are in the
        review log
+   11. an approved gate refuses edits -- its sheet is what everything
+       downstream was built from
+   12. every gate, open and approved, renders in a real browser and says
+       what a reviewer needs it to (see ui.py); skip with --skip-ui
 
 The artifact it leaves behind contains the full request/response transcript,
-the fact sheet, the reference sheet, the review log, and a readable report --
+the fact sheet, the reference sheet, the review log, a screenshot of every
+gate as rendered, and a readable report --
 so a run can be inspected later, diffed against another run, or attached to a
 bug report.
 """
@@ -45,6 +50,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+from ui import Browser, UIProblem, assert_page, find_chrome, require_dashboard
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ARTIFACT_ROOT = REPO_ROOT / "artifacts" / "e2e"
@@ -90,6 +97,9 @@ class Run:
     facts: dict[str, Any] | None = None
     references: dict[str, Any] | None = None
     review_log: list[dict[str, Any]] = field(default_factory=list)
+    #: (caption, path relative to the run folder), in the order they were taken.
+    screenshots: list[tuple[str, str]] = field(default_factory=list)
+    ui_checked: bool = False
     video_id: str = ""
     content_format: str = ""
     notes: list[str] = field(default_factory=list)
@@ -660,6 +670,74 @@ def check_gate_b_opens(client: Client, run: Run, video_id: str) -> str:
     return f"video advanced to refs_approved with {selected} comparisons"
 
 
+# ------------------------------------------------------------- closed gates
+
+
+def check_closed_gate_refuses_edits(
+    client: Client, *, service: str, method: str, payload: dict[str, Any], gate: str
+) -> str:
+    """An approved gate's sheet must not change.
+
+    Relevance, and later the script, are built from what the human approved.
+    Before this rule the API accepted edits after approval, so the approval on
+    record could describe a sheet that no longer existed.
+    """
+    resp = client.call(service, method, payload)
+    if resp["_status"] == 200:
+        raise E2EFailure(
+            f"Gate {gate} is approved, but {method} still changed its sheet. Everything "
+            "downstream was built from what was approved; it must not move underneath."
+        )
+    message = str(resp.get("message", ""))
+    if "gate closed" not in message:
+        raise E2EFailure(f"{method} was refused, but not because Gate {gate} is closed: {message}")
+    return f"refused with HTTP {resp['_status']}: gate closed"
+
+
+# --------------------------------------------------------------- the dashboard
+
+
+@dataclass
+class Dashboard:
+    """Where to look, and what to look with."""
+
+    browser: Browser
+    web: str
+    run_dir: Path
+
+
+def open_dashboard(web: str, chrome: str | None) -> Browser:
+    try:
+        require_dashboard(web)
+        return Browser(find_chrome(chrome))
+    except UIProblem as exc:
+        raise E2EFailure(str(exc)) from exc
+
+
+def check_page(
+    dash: Dashboard,
+    run: Run,
+    *,
+    name: str,
+    caption: str,
+    path: str,
+    must_show: tuple[str, ...],
+    must_not_show: tuple[str, ...] = (),
+) -> str:
+    """Render one page as the reviewer would see it, and check what it says."""
+    png = dash.run_dir / "ui" / f"{name}.png"
+    try:
+        capture = dash.browser.capture(f"{dash.web}{path}", png)
+        assert_page(capture, must_show=must_show, must_not_show=must_not_show)
+    except UIProblem as exc:
+        raise E2EFailure(str(exc)) from exc
+    finally:
+        # Kept even when the check fails -- that is when the picture matters.
+        if png.is_file():
+            run.screenshots.append((caption, f"ui/{png.name}"))
+    return f"ui/{png.name}"
+
+
 # --------------------------------------------------------------- the artifact
 
 
@@ -709,6 +787,8 @@ def write_artifact(run: Run, run_dir: Path) -> None:
         "references_selected": sum(
             1 for p in (run.references or {}).get("proposals", []) if p.get("selected")
         ),
+        "ui_checked": run.ui_checked,
+        "screenshots": [path for _, path in run.screenshots],
     }
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
 
@@ -797,6 +877,15 @@ def _report(run: Run) -> str:
             lines += ["", "Rejected, with the reason recorded:", ""]
             lines += [f"- {reason}" for reason in rejections]
 
+    lines += ["", "## What the reviewer saw", ""]
+    if not run.ui_checked:
+        lines.append(
+            "**The dashboard was not checked in this run** (`--skip-ui`, or it could not "
+            "be reached). Nothing here says the UI works."
+        )
+    for caption, path in run.screenshots:
+        lines += [f"### {caption}", "", f"![{caption}]({path})", ""]
+
     if run.notes:
         lines += ["## Notes", ""] + [f"- {note}" for note in run.notes]
 
@@ -810,8 +899,8 @@ def _report(run: Run) -> str:
         "```",
         "",
         "Artifacts: `transcript.json` (every request and response), `facts.json`, "
-        "`references.json`, `review_log.json`, `project/` (the pipeline's own output), "
-        "`summary.json`.",
+        "`references.json`, `review_log.json`, `ui/` (each gate as rendered), `project/` "
+        "(the pipeline's own output), `summary.json`.",
     ]
     return "\n".join(lines) + "\n"
 
@@ -840,6 +929,15 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="skip re-downloading sources to double-check evidence (needs network)",
     )
+    parser.add_argument(
+        "--web", default="http://localhost:3000", help="dashboard base URL, for the UI checks"
+    )
+    parser.add_argument("--chrome", default=None, help="Chrome to render with (default: find it)")
+    parser.add_argument(
+        "--skip-ui",
+        action="store_true",
+        help="do not render the dashboard; the report will say the UI went unchecked",
+    )
     args = parser.parse_args(argv)
 
     run = Run(topic=args.topic, started_at=datetime.now(UTC))
@@ -850,8 +948,37 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"{BOLD}REWIND end-to-end{RESET}  topic={args.topic}  api={args.api}\n")
 
+    dash: Dashboard | None = None
+
+    def look(name: str, caption: str, path: str, *show: str, hide: tuple[str, ...] = ()) -> None:
+        """Check a page the way the reviewer would see it at this point."""
+        if dash is None:
+            return
+        board = dash
+        check(
+            run,
+            f"the reviewer sees {caption}",
+            lambda: check_page(
+                board,
+                run,
+                name=name,
+                caption=caption,
+                path=path,
+                must_show=show,
+                must_not_show=hide,
+            ),
+        )
+
     try:
         check(run, "all three services are up", lambda: check_services_up(client))
+        if not args.skip_ui:
+            browser = check(
+                run,
+                "the dashboard is up and can be looked at",
+                lambda: open_dashboard(args.web, args.chrome),
+            )
+            dash = Dashboard(browser=browser, web=args.web.rstrip("/"), run_dir=run_dir)
+            run.ui_checked = True
         check(
             run,
             "a topic can be queued",
@@ -878,6 +1005,14 @@ def main(argv: list[str] | None = None) -> int:
                 "evidence re-verified against the live sources",
                 lambda: check_evidence_is_really_in_the_source(run),
             )
+        fact_count = len((run.facts or {}).get("facts", []))
+        look(
+            "gate-a-open",
+            "Gate A, waiting for a decision",
+            f"/v/{run.video_id}/facts",
+            f"{fact_count} facts",
+            "Approve Gate A",
+        )
         check(
             run,
             "Gate A stays shut until facts are approved",
@@ -889,6 +1024,24 @@ def main(argv: list[str] | None = None) -> int:
             lambda: check_approve_facts(client, run.video_id),
         )
         check(run, "Gate A opens", lambda: check_gate_a_opens(client, run.video_id))
+        check(
+            run,
+            "an approved Gate A refuses edits",
+            lambda: check_closed_gate_refuses_edits(
+                client,
+                service="FactsService",
+                method="ApproveAllFacts",
+                payload={"videoId": run.video_id, "approved": False},
+                gate="A",
+            ),
+        )
+        look(
+            "gate-a-approved",
+            "Gate A, approved",
+            f"/v/{run.video_id}/facts",
+            "Facts approved",
+            hide=("Approve Gate A", "Approve all", "Add a fact"),
+        )
 
         check(
             run,
@@ -910,7 +1063,34 @@ def main(argv: list[str] | None = None) -> int:
             "no more than three references can be selected",
             lambda: check_max_three_enforced(client, run, run.video_id),
         )
+        first = ((run.references or {}).get("proposals") or [{}])[0]
+        look(
+            "gate-b-open",
+            "Gate B, waiting for a decision",
+            f"/v/{run.video_id}/references",
+            str(first.get("reference", "")),
+            "Approve Gate B",
+        )
         check(run, "Gate B opens", lambda: check_gate_b_opens(client, run, run.video_id))
+        check(
+            run,
+            "an approved Gate B refuses edits",
+            lambda: check_closed_gate_refuses_edits(
+                client,
+                service="ReferencesService",
+                method="SelectProposal",
+                payload={"videoId": run.video_id, "proposalId": first.get("id"), "selected": False},
+                gate="B",
+            ),
+        )
+        look(
+            "gate-b-approved",
+            "Gate B, approved",
+            f"/v/{run.video_id}/references",
+            "References approved",
+            hide=("Approve Gate B", "Write my own"),
+        )
+        look("queue", "the queue", "/", run.video_id)
 
         check(
             run,
@@ -924,6 +1104,8 @@ def main(argv: list[str] | None = None) -> int:
         # step so it appears in the report rather than vanishing up the stack.
         run.steps.append(Step("the harness itself", ok=False, detail=f"crashed: {exc!r}"))
     finally:
+        if dash is not None:
+            dash.browser.close()
         # ALWAYS. An E2E test that loses its artifact when something breaks is
         # worse than useless -- that is the exact moment the artifact matters.
         write_artifact(run, run_dir)

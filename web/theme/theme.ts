@@ -2,15 +2,39 @@
  * The MUI theme, built entirely from tokens.ts.
  *
  * This file is the only place tokens are translated into MUI's vocabulary.
- * Components consume the theme; they never import tokens directly for colour
- * or radius, so there is exactly one path from a design decision to the screen.
+ * Components consume the theme; they never import tokens directly for a
+ * scheme-dependent colour, so there is exactly one path from a design
+ * decision to the screen.
+ *
+ * ONE theme carrying BOTH colour schemes, emitted as CSS variables and
+ * switched by the `prefers-color-scheme` media query. The browser picks the
+ * scheme before the first paint, with no JavaScript involved.
+ *
+ * The previous version chose the scheme in JavaScript (useMediaQuery). The
+ * server cannot know the viewer's preference, so it always rendered light,
+ * then the client flipped to dark -- a visible flash on every page load. Worse,
+ * components reached for `palette.light.*` directly, so in dark mode they drew
+ * light-mode colours: the approve bar on every gate was white text on a pale
+ * grey panel, unreadable. With CSS variables, a component that names a
+ * palette path ('divider', 'surface.translucent') gets the right colour in
+ * either scheme without knowing which one is active.
  */
 
 'use client';
 
 import { createTheme, type Theme } from '@mui/material/styles';
 
-import { material, palette, radius, space, type, type ThemeMode } from './tokens';
+import { palette, radius, space, type, type ThemeMode } from './tokens';
+
+declare module '@mui/material/styles' {
+  interface Palette {
+    /** Translucent panel fill, for sticky bars and headers over content. */
+    surface: { translucent: string };
+  }
+  interface PaletteOptions {
+    surface?: { translucent: string };
+  }
+}
 
 /** The system font stack, so the UI uses SF on Apple platforms and the
  *  platform's own UI face elsewhere rather than shipping a webfont. */
@@ -25,12 +49,10 @@ const fontFamily = [
   'sans-serif',
 ].join(',');
 
-export function buildTheme(mode: ThemeMode): Theme {
+function schemePalette(mode: ThemeMode) {
   const c = palette[mode];
-
-  return createTheme({
+  return {
     palette: {
-      mode,
       background: { default: c.bg, paper: c.surfaceSolid },
       text: { primary: c.text, secondary: c.textMuted },
       primary: { main: c.accent },
@@ -38,6 +60,17 @@ export function buildTheme(mode: ThemeMode): Theme {
       warning: { main: palette.status.degraded },
       error: { main: palette.status.down },
       divider: c.hairline,
+      surface: { translucent: c.surface },
+    },
+  };
+}
+
+export function buildTheme(): Theme {
+  return createTheme({
+    cssVariables: { colorSchemeSelector: 'media' },
+    colorSchemes: {
+      light: schemePalette('light'),
+      dark: schemePalette('dark'),
     },
 
     spacing: space.unit,
@@ -56,32 +89,36 @@ export function buildTheme(mode: ThemeMode): Theme {
 
     components: {
       MuiCssBaseline: {
-        styleOverrides: {
+        styleOverrides: (theme) => ({
           body: {
-            backgroundColor: c.bg,
+            backgroundColor: theme.vars?.palette.background.default,
             // Grayscale antialiasing is what makes text on Apple platforms
             // look set rather than smeared.
             WebkitFontSmoothing: 'antialiased',
             MozOsxFontSmoothing: 'grayscale',
           },
-        },
+        }),
       },
 
       MuiButton: {
         defaultProps: { disableElevation: true },
         styleOverrides: {
-          root: { borderRadius: radius.pill, paddingInline: 18, paddingBlock: 8 },
+          root: {
+            borderRadius: radius.pill,
+            paddingInline: 18,
+            paddingBlock: 8,
+          },
         },
       },
 
       MuiPaper: {
         defaultProps: { elevation: 0 },
         styleOverrides: {
-          root: {
+          root: ({ theme }) => ({
             backgroundImage: 'none',
             borderRadius: radius.lg,
-            border: `1px solid ${c.hairline}`,
-          },
+            border: `1px solid ${theme.vars?.palette.divider}`,
+          }),
         },
       },
 
@@ -109,12 +146,3 @@ function css(t: (typeof type)[keyof typeof type]) {
     lineHeight: t.leading,
   };
 }
-
-/** Surface styling for translucent panels; used via the `sx` prop. */
-export const surfaceSx = (mode: ThemeMode) => ({
-  backgroundColor: palette[mode].surface,
-  backdropFilter: material.blur,
-  WebkitBackdropFilter: material.blur,
-  border: `1px solid ${palette[mode].hairline}`,
-  borderRadius: `${radius.lg}px`,
-});

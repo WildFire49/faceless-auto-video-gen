@@ -31,4 +31,9 @@ var (
 	// ErrAlreadyExists means an id is taken. Adding the same topic twice is a
 	// mistake worth reporting rather than silently merging.
 	ErrAlreadyExists = errors.New("already exists")
+
+	// ErrGateClosed means a gate's sheet was edited while the video was not
+	// waiting at that gate -- before the step finished writing it, or after
+	// a human approved it. See RequireOpenGate.
+	ErrGateClosed = errors.New("gate closed")
 )

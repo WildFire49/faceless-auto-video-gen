@@ -28,7 +28,8 @@ import { videoClient } from '@/lib/api/client';
 import { videoKeys } from '@/lib/api/videos';
 import type { Video } from '@/lib/gen/rewind/v1/video_pb';
 import { slideIn } from '@/theme/motion';
-import { material, palette } from '@/theme/tokens';
+import { material } from '@/theme/tokens';
+import { schemeColour } from '@/theme/colour';
 
 export interface GateShellProps {
   videoId: string;
@@ -54,9 +55,10 @@ export function GateShell({ videoId, gateLabel, children }: GateShellProps) {
           position: 'sticky',
           top: 0,
           zIndex: 10,
+          backgroundColor: 'surface.translucent',
           backdropFilter: material.blur,
           WebkitBackdropFilter: material.blur,
-          borderBottom: `1px solid ${palette.light.hairline}`,
+          borderBottom: `1px solid ${schemeColour.hairline}`,
         }}
       >
         <Container maxWidth="md">
@@ -74,7 +76,7 @@ export function GateShell({ videoId, gateLabel, children }: GateShellProps) {
               </Typography>
             </Stack>
 
-            {video.data ? <GateProgress video={video.data} /> : null}
+            {video.data ? <GateProgress video={video.data} labelled /> : null}
           </Stack>
         </Container>
       </Box>
@@ -82,9 +84,7 @@ export function GateShell({ videoId, gateLabel, children }: GateShellProps) {
       <Container maxWidth="md" sx={{ py: 4 }}>
         {video.isLoading ? <LinearProgress /> : null}
         {video.isError ? <Alert severity="error">{video.error.message}</Alert> : null}
-        {video.data ? (
-          <motion.div {...slideIn(reduced)}>{children(video.data)}</motion.div>
-        ) : null}
+        {video.data ? <motion.div {...slideIn(reduced)}>{children(video.data)}</motion.div> : null}
       </Container>
     </Box>
   );

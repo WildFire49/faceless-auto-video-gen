@@ -123,6 +123,25 @@ interface it implements.
 M3 — Relevance & Gate B: **COMPLETE**, awaiting review. Do not start M4 without an explicit
 "approved, start M4" from the user.
 
+### Invariants from the pre-M4 review — do not weaken them
+Found by looking at the dashboard in a browser, which no test had ever done.
+
+1. **Every number a viewer sees or hears must be in the quoted evidence**
+   (`ai/rewind_ai/research/grounding.py`). The verifier proves the QUOTE is real; it said
+   nothing about the label and claim the model wrote beside it. A fact labelled "around
+   9,000 years ago" quoted a sentence with no date in it. Universal like the verifier — not
+   a format's to vary. Known gap: spelled-out numbers, pinned by a strict xfail.
+2. **An approved gate is closed** (`domain.RequireOpenGate`). A gate's sheet may be edited
+   only while the video waits at that gate; every service `mutate` checks it before reading
+   the sheet. Before this, edits after approval were accepted, so the approval on record
+   could describe a sheet that no longer existed. Gates C–F must call it too.
+3. **Colours come from the theme, never from `palette.light`/`palette.dark`**, and
+   transparency comes from `tint()` in `web/theme/colour.ts` — never by appending a hex pair
+   to a token. `rgb(48 209 88)18` is invalid CSS, the browser drops it silently, and for
+   three milestones every tinted chip and badge simply did not render.
+4. **The E2E looks at every gate** (`e2e/ui.py`): open and approved, screenshots in the
+   artifact, assertions on the page's visible text. A new gate page gets the same checks.
+
 ### Invariant M3 established — do not weaken it
 **A modern reference is a comparison, never a claim.** The channel researches history, not
 brands, so nothing it says about a modern company has a source behind it. Two rules enforce

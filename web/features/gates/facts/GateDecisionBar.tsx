@@ -26,7 +26,7 @@ import { useState } from 'react';
 import { useGateDecision } from '@/lib/api/facts';
 import type { FactsView } from '@/lib/gen/rewind/v1/facts_pb';
 import { Gate, VideoStatus, type Video } from '@/lib/gen/rewind/v1/video_pb';
-import { material, palette } from '@/theme/tokens';
+import { material } from '@/theme/tokens';
 
 export function GateDecisionBar({ video, view }: { video: Video; view: FactsView }) {
   const router = useRouter();
@@ -45,7 +45,7 @@ export function GateDecisionBar({ video, view }: { video: Video; view: FactsView
           position: 'sticky',
           bottom: 16,
           p: 2.5,
-          backgroundColor: palette.light.surface,
+          backgroundColor: 'surface.translucent',
           backdropFilter: material.blur,
           WebkitBackdropFilter: material.blur,
         }}
@@ -57,8 +57,7 @@ export function GateDecisionBar({ video, view }: { video: Video; view: FactsView
         >
           <Box sx={{ flex: 1 }}>
             <Typography variant="body1" sx={{ fontWeight: 600 }}>
-              {view.approvedCount} approved across {view.groupCount}{' '}
-              {view.groupNoun || 'group'}
+              {view.approvedCount} approved across {view.groupCount} {view.groupNoun || 'group'}
               {view.groupCount === 1 ? '' : 's'}
             </Typography>
             {!view.canApprove ? (
@@ -107,8 +106,8 @@ export function GateDecisionBar({ video, view }: { video: Video; view: FactsView
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
             <Typography variant="body2" color="text.secondary">
-              The video returns to research, and the facts are gathered again. Say what was
-              wrong — you will be reading this note when you pick it up.
+              The video returns to research, and the facts are gathered again. Say what was wrong —
+              you will be reading this note when you pick it up.
             </Typography>
             <TextField
               autoFocus

@@ -213,6 +213,16 @@ func (s *ReferencesService) mutate(
 		return nil, err
 	}
 
+	// Checked first, before the sheet is even read: an approved gate's sheet
+	// is what everything downstream was built from (domain.RequireOpenGate).
+	video, err := s.videos.Get(ctx, videoID)
+	if err != nil {
+		return nil, err
+	}
+	if err := domain.RequireOpenGate(video, domain.GateB); err != nil {
+		return nil, err
+	}
+
 	sheet, exists, err := s.refs.Load(videoID)
 	if err != nil {
 		return nil, err
@@ -231,10 +241,7 @@ func (s *ReferencesService) mutate(
 		return nil, err
 	}
 
-	status := domain.StatusRefsReady
-	if v, err := s.videos.Get(ctx, videoID); err == nil {
-		status = v.Status
-	}
+	status := video.Status
 
 	if err := s.log.Append(ctx, &domain.ReviewEntry{
 		VideoID:    videoID,

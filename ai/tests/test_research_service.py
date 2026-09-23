@@ -484,3 +484,51 @@ def test_cap_never_trims_below_the_gate_requirement(
 
     result = service.build(video_id="sandals", topic="sandals", extra_urls=[])
     assert len(result.facts) >= 8, "the cap trimmed below what Gate A requires"
+
+
+# ------------------------------------------ numbers the viewer sees or hears
+#
+# The unit rules live in tests/test_grounding.py. This proves the service
+# actually applies them: a verbatim quote with an invented date beside it
+# must not reach Gate A. Found by reading Gate A in a browser, where a fact
+# labelled "around 9,000 years ago" quoted a sentence with no date at all.
+
+
+def test_a_verbatim_quote_with_an_invented_date_is_rejected(
+    tmp_path: Path, documents: list[Document]
+) -> None:
+    invented = event(
+        "around 9,000 years ago",
+        -7000,
+        "Roman soldiers wore hobnailed sandals.",
+        # Verbatim from the source, so the evidence verifier passes it. The
+        # date is nowhere in it.
+        "Roman soldiers wore caligae, heavy-soled hobnailed military sandals, which were "
+        "standard issue throughout the Republic and early Empire.",
+    )
+    service, _ = build_service(tmp_path, documents, [[*HONEST_EVENTS, invented]])
+
+    result = service.build(video_id="sandals", topic="sandals", extra_urls=[])
+
+    assert all(f.label != "around 9,000 years ago" for f in result.facts)
+    assert result.candidates_rejected == 1
+    assert any("9000" in r and "model supplied" in r for r in result.rejections)
+
+
+def test_an_invented_number_in_the_claim_is_rejected(
+    tmp_path: Path, documents: list[Document]
+) -> None:
+    # The label is honest; the claim, which the script will READ ALOUD, is not.
+    invented = event(
+        "1902",
+        1902,
+        "The Birkenstock footbed was patented in 1903.",
+        "The Birkenstock footbed was patented in 1902 by Konrad Birkenstock.",
+    )
+    honest_without_1902 = [e for e in HONEST_EVENTS if e["year_label"] != "1902"]
+    service, _ = build_service(tmp_path, documents, [[*honest_without_1902, invented]])
+
+    result = service.build(video_id="sandals", topic="sandals", extra_urls=[])
+
+    assert all("1903" not in f.claim for f in result.facts)
+    assert any("1903" in r for r in result.rejections)

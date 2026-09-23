@@ -25,6 +25,7 @@ import Typography from '@mui/material/Typography';
 
 import type { Fact } from '@/lib/gen/rewind/v1/research_pb';
 import { palette, radius } from '@/theme/tokens';
+import { opacity, schemeColour, tint } from '@/theme/colour';
 
 export interface FactRowProps {
   fact: Fact;
@@ -32,6 +33,8 @@ export interface FactRowProps {
   onEdit: () => void;
   onDelete: () => void;
   busy?: boolean;
+  /** The gate is closed: show the decision, offer no controls. */
+  readOnly?: boolean;
 }
 
 /** Confidence comes from how closely the evidence matched its source. */
@@ -46,7 +49,14 @@ function confidenceColor(confidence: string): string {
   }
 }
 
-export function FactRow({ fact, onToggle, onEdit, onDelete, busy = false }: FactRowProps) {
+export function FactRow({
+  fact,
+  onToggle,
+  onEdit,
+  onDelete,
+  busy = false,
+  readOnly = false,
+}: FactRowProps) {
   const approved = fact.approved;
 
   return (
@@ -58,28 +68,48 @@ export function FactRow({ fact, onToggle, onEdit, onDelete, busy = false }: Fact
         alignItems: 'flex-start',
         // Approved facts get a quiet tint rather than a loud one: at eight-plus
         // rows, a saturated background would be exhausting to read.
-        backgroundColor: approved ? `${palette.status.ok}0A` : 'transparent',
+        backgroundColor: approved ? tint(palette.status.ok, opacity.wash) : 'transparent',
         transition: 'background-color 160ms ease',
       }}
     >
-      <Tooltip title={approved ? 'Approved — click to untick' : 'Click to approve this fact'}>
-        <span>
-          <IconButton
-            onClick={() => onToggle(!approved)}
-            disabled={busy}
-            aria-label={approved ? `Unapprove fact ${fact.id}` : `Approve fact ${fact.id}`}
-            sx={{ color: approved ? palette.status.ok : 'text.secondary', mt: -0.5 }}
-          >
-            {approved ? <CheckCircleIcon /> : <RadioButtonUncheckedIcon />}
-          </IconButton>
-        </span>
-      </Tooltip>
+      {readOnly ? (
+        <Box
+          aria-label={approved ? `Fact ${fact.id} approved` : `Fact ${fact.id} not approved`}
+          sx={{
+            color: approved ? palette.status.ok : 'text.disabled',
+            p: 1,
+            mt: -0.5,
+          }}
+        >
+          {approved ? <CheckCircleIcon /> : <RadioButtonUncheckedIcon />}
+        </Box>
+      ) : (
+        <Tooltip title={approved ? 'Approved — click to untick' : 'Click to approve this fact'}>
+          <span>
+            <IconButton
+              onClick={() => onToggle(!approved)}
+              disabled={busy}
+              aria-label={approved ? `Unapprove fact ${fact.id}` : `Approve fact ${fact.id}`}
+              sx={{
+                color: approved ? palette.status.ok : 'text.secondary',
+                mt: -0.5,
+              }}
+            >
+              {approved ? <CheckCircleIcon /> : <RadioButtonUncheckedIcon />}
+            </IconButton>
+          </span>
+        </Tooltip>
+      )}
 
       <Stack spacing={1} sx={{ flex: 1, minWidth: 0 }}>
         <Stack direction="row" spacing={1.5} alignItems="baseline" flexWrap="wrap">
           <Typography
             variant="body1"
-            sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
+            sx={{
+              fontWeight: 700,
+              fontVariantNumeric: 'tabular-nums',
+              whiteSpace: 'nowrap',
+            }}
           >
             {fact.label}
           </Typography>
@@ -98,22 +128,20 @@ export function FactRow({ fact, onToggle, onEdit, onDelete, busy = false }: Fact
                 icon={<WarningAmberIcon />}
                 label="conflict"
                 sx={{
-                  backgroundColor: `${palette.status.degraded}18`,
-                  border: `1px solid ${palette.status.degraded}55`,
+                  backgroundColor: tint(palette.status.degraded, opacity.fill),
+                  border: `1px solid ${tint(palette.status.degraded, opacity.outline)}`,
                 }}
               />
             </Tooltip>
           ) : null}
 
-          <Tooltip
-            title={`Evidence matched its source at ${(fact.matchScore * 100).toFixed(1)}%`}
-          >
+          <Tooltip title={`Evidence matched its source at ${(fact.matchScore * 100).toFixed(1)}%`}>
             <Chip
               size="small"
               label={fact.confidence}
               sx={{
-                backgroundColor: `${confidenceColor(fact.confidence)}18`,
-                border: `1px solid ${confidenceColor(fact.confidence)}55`,
+                backgroundColor: tint(confidenceColor(fact.confidence), opacity.fill),
+                border: `1px solid ${tint(confidenceColor(fact.confidence), opacity.outline)}`,
               }}
             />
           </Tooltip>
@@ -126,7 +154,7 @@ export function FactRow({ fact, onToggle, onEdit, onDelete, busy = false }: Fact
             rather than as the narrator's words. */}
         <Box
           sx={{
-            borderLeft: `2px solid ${palette.light.hairline}`,
+            borderLeft: `2px solid ${schemeColour.hairline}`,
             pl: 2,
             py: 0.5,
           }}
@@ -159,22 +187,24 @@ export function FactRow({ fact, onToggle, onEdit, onDelete, busy = false }: Fact
         </Stack>
       </Stack>
 
-      <Stack direction="row" spacing={0.5} sx={{ mt: -0.5 }}>
-        <Tooltip title="Edit the year, place or claim">
-          <span>
-            <IconButton onClick={onEdit} disabled={busy} aria-label={`Edit fact ${fact.id}`}>
-              <EditOutlinedIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </Tooltip>
-        <Tooltip title="Remove this fact">
-          <span>
-            <IconButton onClick={onDelete} disabled={busy} aria-label={`Delete fact ${fact.id}`}>
-              <DeleteOutlineIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </Tooltip>
-      </Stack>
+      {readOnly ? null : (
+        <Stack direction="row" spacing={0.5} sx={{ mt: -0.5 }}>
+          <Tooltip title="Edit the year, place or claim">
+            <span>
+              <IconButton onClick={onEdit} disabled={busy} aria-label={`Edit fact ${fact.id}`}>
+                <EditOutlinedIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title="Remove this fact">
+            <span>
+              <IconButton onClick={onDelete} disabled={busy} aria-label={`Delete fact ${fact.id}`}>
+                <DeleteOutlineIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Stack>
+      )}
     </Stack>
   );
 }

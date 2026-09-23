@@ -22,11 +22,13 @@ import { useState } from 'react';
 import { AddProposalDialog } from './AddProposalDialog';
 import { EditProposalDialog } from './EditProposalDialog';
 import { GateBDecisionBar } from './GateBDecisionBar';
+import { GateClosedBar } from '@/features/gates/GateClosedBar';
+import { isGateOpen } from '@/lib/api/videos';
 import { ProposalCard } from './ProposalCard';
 import { useFacts, useLatestJob, useRunStep } from '@/lib/api/facts';
 import { useReferenceMutations, useReferences } from '@/lib/api/references';
 import type { Proposal } from '@/lib/gen/rewind/v1/relevance_pb';
-import { JobState, type Video } from '@/lib/gen/rewind/v1/video_pb';
+import { Gate, JobState, type Video } from '@/lib/gen/rewind/v1/video_pb';
 
 export function ReferencesGate({ video }: { video: Video }) {
   const videoId = video.id;
@@ -41,14 +43,14 @@ export function ReferencesGate({ video }: { video: Video }) {
   const [adding, setAdding] = useState(false);
 
   const running = job.data?.state === JobState.RUNNING;
+  // Closed once approved (or before it is reached); the API refuses edits then.
+  const readOnly = !isGateOpen(video, Gate.B_REFERENCES);
   const view = refs.data;
   const sheet = view?.sheet;
 
   // Fact lookup, so each card can show what it attaches to. A comparison that
   // does not belong to its fact is the failure worth catching at this gate.
-  const factsById = new Map(
-    (facts.data?.sheet?.facts ?? []).map((f) => [f.id, f] as const),
-  );
+  const factsById = new Map((facts.data?.sheet?.facts ?? []).map((f) => [f.id, f] as const));
 
   if (running) {
     const percent = (job.data?.percent ?? 0) * 100;
@@ -111,9 +113,9 @@ export function ReferencesGate({ video }: { video: Video }) {
     <Stack spacing={3}>
       {generated > 0 && rejected > 0 ? (
         <Alert severity="info" sx={{ borderRadius: 2 }}>
-          The model wrote <strong>{generated}</strong> comparisons;{' '}
-          <strong>{rejected}</strong> were thrown out for asserting something about a brand,
-          reaching for a forbidden subject, or repeating a reference.
+          The model wrote <strong>{generated}</strong> comparisons; <strong>{rejected}</strong> were
+          thrown out for asserting something about a brand, reaching for a forbidden subject, or
+          repeating a reference.
           {sheet.rejections.length > 0 ? (
             <Box component="ul" sx={{ mt: 1, mb: 0, pl: 3 }}>
               {sheet.rejections.slice(0, 3).map((r) => (
@@ -130,12 +132,14 @@ export function ReferencesGate({ video }: { video: Video }) {
         <Typography variant="h3" component="h2">
           {view.selectedCount} of {view.maxSelectable} chosen
         </Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={() => setAdding(true)}>
-          Write my own
-        </Button>
+        {readOnly ? null : (
+          <Button size="small" startIcon={<AddIcon />} onClick={() => setAdding(true)}>
+            Write my own
+          </Button>
+        )}
       </Stack>
 
-      {atLimit ? (
+      {atLimit && !readOnly ? (
         <Alert severity="success" sx={{ borderRadius: 2 }}>
           That is the limit. Three is the point at which a history video starts sounding like an
           advert — untick one to swap it.
@@ -152,7 +156,8 @@ export function ReferencesGate({ video }: { video: Video }) {
               factLabel={fact?.label}
               factClaim={fact?.claim}
               stale={staleIds.has(proposal.id)}
-              selectable={!atLimit}
+              selectable={!atLimit || readOnly}
+              readOnly={readOnly}
               busy={mutations.select.isPending}
               onToggle={(selected) =>
                 mutations.select.mutate({ proposalId: proposal.id, selected })
@@ -168,7 +173,19 @@ export function ReferencesGate({ video }: { video: Video }) {
         <Alert severity="warning">{mutations.select.error.message}</Alert>
       ) : null}
 
-      <GateBDecisionBar video={video} view={view} />
+      {readOnly ? (
+        <GateClosedBar
+          video={video}
+          gate={Gate.B_REFERENCES}
+          summary={
+            view.selectedCount === 0
+              ? 'No comparisons were chosen; this is a straight history video.'
+              : `${view.selectedCount} comparison${view.selectedCount === 1 ? '' : 's'} went to the script.`
+          }
+        />
+      ) : (
+        <GateBDecisionBar video={video} view={view} />
+      )}
 
       <EditProposalDialog
         proposal={editing}

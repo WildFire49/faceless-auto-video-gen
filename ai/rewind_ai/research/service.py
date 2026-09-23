@@ -19,6 +19,7 @@ from rewind_ai.formats.base import ContentFormat, RawItem
 from rewind_ai.llm.base import LLM
 from rewind_ai.research.base import Document, Fact, ResearchResult, SourceFetcher
 from rewind_ai.research.extractor import extract_from_document
+from rewind_ai.research.grounding import ungrounded_numbers
 from rewind_ai.research.verifier import confidence_for, verify_evidence
 
 log = get_logger(__name__)
@@ -249,6 +250,20 @@ class ResearchService:
                     claim=fact.claim[:80],
                     score=round(result.score, 3),
                 )
+                continue
+
+            # The quote is real. Now the part the viewer actually sees and
+            # hears: a date in the label or claim that the quote does not
+            # contain was written by the model, whatever the quote says.
+            invented = ungrounded_numbers(
+                label=fact.label, claim=fact.claim, evidence=fact.evidence
+            )
+            if invented:
+                rejections.append(
+                    f"{fact.label}: says {', '.join(invented)}, which the quoted "
+                    "evidence does not -- the model supplied that number"
+                )
+                log.info("rejected ungrounded number", label=fact.label, numbers=invented)
                 continue
 
             fact.match_score = result.score

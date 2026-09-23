@@ -1,8 +1,8 @@
 /**
  * Home — the video queue (SPEC.md 8).
  *
- * M1: the queue table, a "needs my review" filter, and adding a topic. The
- * per-gate pages arrive with the modules that fill them, from M2 onward.
+ * The queue table, a "needs my review" filter, and adding a topic. A row
+ * opens the gate waiting for you, or the last one you approved.
  */
 
 'use client';
@@ -27,7 +27,8 @@ import { useSystemHealth } from '@/lib/api/queries';
 import { useVideos } from '@/lib/api/videos';
 import { HealthStatus } from '@/lib/gen/rewind/v1/health_pb';
 import { slideIn } from '@/theme/motion';
-import { material, palette } from '@/theme/tokens';
+import { material } from '@/theme/tokens';
+import { schemeColour } from '@/theme/colour';
 
 function healthLabel(status: HealthStatus): string {
   switch (status) {
@@ -63,9 +64,10 @@ export default function HomePage() {
           position: 'sticky',
           top: 0,
           zIndex: 10,
+          backgroundColor: 'surface.translucent',
           backdropFilter: material.blur,
           WebkitBackdropFilter: material.blur,
-          borderBottom: `1px solid ${palette.light.hairline}`,
+          borderBottom: `1px solid ${schemeColour.hairline}`,
         }}
       >
         <Container maxWidth="lg">
@@ -130,10 +132,6 @@ export default function HomePage() {
               )}
             </Paper>
 
-            <Typography variant="body2" color="text.secondary">
-              <strong>M1</strong> — the queue, the state machine and the six gates. Pipeline steps
-              arrive in M2, when Gate A starts filling with researched facts.
-            </Typography>
           </Stack>
         </motion.div>
       </Container>

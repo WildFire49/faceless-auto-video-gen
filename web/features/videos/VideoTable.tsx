@@ -16,6 +16,7 @@ import Typography from '@mui/material/Typography';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import { useRouter } from 'next/navigation';
 
+import { FailedCell } from './FailedCell';
 import { GateProgress } from './GateProgress';
 import { Gate, VideoStatus, type Video } from '@/lib/gen/rewind/v1/video_pb';
 import {
@@ -23,28 +24,16 @@ import {
   attentionOf,
   gateLabel,
   humanAge,
+  reviewRouteOf,
   statusLabel,
 } from '@/lib/api/videos';
-import { palette, radius, type as typeTokens } from '@/theme/tokens';
+import { radius, type as typeTokens } from '@/theme/tokens';
+import { opacity, schemeColour, tint } from '@/theme/colour';
 
 function WaitingCell({ video }: { video: Video }) {
   const attention = attentionOf(video);
 
-  if (attention === 'failed') {
-    return (
-      <Tooltip title={video.error || 'The step failed'} arrow>
-        <Chip
-          size="small"
-          label="Failed"
-          sx={{
-            backgroundColor: `${palette.status.down}18`,
-            color: 'text.primary',
-            border: `1px solid ${palette.status.down}55`,
-          }}
-        />
-      </Tooltip>
-    );
-  }
+  if (attention === 'failed') return <FailedCell video={video} />;
 
   if (video.awaitingGate !== Gate.UNSPECIFIED) {
     return (
@@ -52,9 +41,9 @@ function WaitingCell({ video }: { video: Video }) {
         size="small"
         label={gateLabel(video.awaitingGate)}
         sx={{
-          backgroundColor: `${attentionColor('waiting-on-you')}18`,
+          backgroundColor: tint(attentionColor('waiting-on-you'), opacity.fill),
           color: 'text.primary',
-          border: `1px solid ${attentionColor('waiting-on-you')}55`,
+          border: `1px solid ${tint(attentionColor('waiting-on-you'), opacity.outline)}`,
         }}
       />
     );
@@ -117,8 +106,8 @@ const columns: GridColDef<Video>[] = [
   {
     field: 'awaitingGate',
     headerName: 'Waiting on',
-    flex: 0.9,
-    minWidth: 150,
+    flex: 1.3,
+    minWidth: 220,
     sortable: false,
     renderCell: ({ row }) => (
       <Stack justifyContent="center" sx={{ height: '100%' }}>
@@ -150,18 +139,14 @@ const columns: GridColDef<Video>[] = [
     headerName: 'Updated',
     width: 110,
     renderCell: ({ row }) => (
-      <Typography variant="body2" color="text.secondary">
-        {humanAge(row.updatedAt)}
-      </Typography>
+      <Stack justifyContent="center" sx={{ height: '100%' }}>
+        <Typography variant="body2" color="text.secondary">
+          {humanAge(row.updatedAt)}
+        </Typography>
+      </Stack>
     ),
   },
 ];
-
-/** Which gate page a video's row should open, if any. */
-const GATE_ROUTES: Partial<Record<Gate, string>> = {
-  [Gate.A_FACTS]: 'facts',
-  [Gate.B_REFERENCES]: 'references',
-};
 
 export function VideoTable({ videos, loading }: { videos: Video[]; loading: boolean }) {
   const router = useRouter();
@@ -176,21 +161,26 @@ export function VideoTable({ videos, loading }: { videos: Video[]; loading: bool
       disableRowSelectionOnClick
       disableColumnMenu
       onRowClick={(params) => {
-        // Only rows with a gate page built go anywhere. Clicking a video
-        // waiting at Gate D should do nothing until M5 builds that page,
-        // rather than navigating to a 404.
-        const video = params.row as Video;
-        const route = GATE_ROUTES[video.awaitingGate];
-        if (route) router.push(`/v/${video.id}/${route}`);
+        // The gate waiting for you, or else the last gate you approved, so a
+        // past decision can be looked at again. Nothing for rows with no
+        // built page yet, rather than a 404.
+        const route = reviewRouteOf(params.row as Video);
+        if (route) router.push(route);
       }}
       hideFooter={videos.length <= 25}
-      initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
+      initialState={{
+        pagination: { paginationModel: { pageSize: 25 } },
+        // Most recently touched first: the video you just worked on, or the
+        // one that just finished a step, is the one you are looking for.
+        // RFC 3339 timestamps in one zone sort correctly as strings.
+        sorting: { sortModel: [{ field: 'updatedAt', sort: 'desc' }] },
+      }}
       sx={{
         border: 'none',
         // Hairlines rather than heavy rules: the table should read as a list,
         // not a spreadsheet.
         '& .MuiDataGrid-columnHeaders': {
-          borderBottom: `1px solid ${palette.light.hairline}`,
+          borderBottom: `1px solid ${schemeColour.hairline}`,
         },
         '& .MuiDataGrid-columnHeaderTitle': {
           fontSize: typeTokens.caption.size,
@@ -200,14 +190,13 @@ export function VideoTable({ videos, loading }: { videos: Video[]; loading: bool
           color: 'text.secondary',
         },
         '& .MuiDataGrid-cell': {
-          borderBottom: `1px solid ${palette.light.hairline}`,
+          borderBottom: `1px solid ${schemeColour.hairline}`,
           outline: 'none !important',
         },
         '& .MuiDataGrid-row:hover': {
-          backgroundColor: `${palette.light.accent}0A`,
+          backgroundColor: tint(schemeColour.accent, opacity.wash),
         },
-        // Only hint at clickability where there is somewhere to go.
-        '& .MuiDataGrid-row': { cursor: 'default' },
+        '& .MuiDataGrid-row': { cursor: 'pointer' },
       }}
     />
   );

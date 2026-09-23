@@ -29,6 +29,10 @@ func toConnectError(err error) *connect.Error {
 		// sheet not yet good enough to approve. Their problem to fix, so it
 		// must not be reported as a server error.
 		return connect.NewError(connect.CodeInvalidArgument, err)
+	case errors.Is(err, domain.ErrGateClosed):
+		// Same family as an illegal transition: the request is fine, the
+		// video is just not at the point where this edit is allowed.
+		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, domain.ErrIllegalTransition):
 		// FailedPrecondition, not InvalidArgument: the request was well formed,
 		// the system is simply not in a state where it can be honoured. This is

@@ -136,6 +136,9 @@ ABSOLUTE RULES:
    does not contradict the belief, do not include the item.
 5. If the text corrects no common beliefs, return an empty list. An empty list
    is a correct answer. Inventing a myth is not.
+6. Every number you write anywhere -- dates, amounts, percentages -- must
+   appear in the evidence sentence. An item with a number the evidence does
+   not contain is thrown away.
 """
 
 _USER = """\
