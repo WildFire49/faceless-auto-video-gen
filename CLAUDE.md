@@ -141,6 +141,15 @@ Found by looking at the dashboard in a browser, which no test had ever done.
    three milestones every tinted chip and badge simply did not render.
 4. **The E2E looks at every gate** (`e2e/ui.py`): open and approved, screenshots in the
    artifact, assertions on the page's visible text. A new gate page gets the same checks.
+5. **A timeline fact's sort year must agree with its label** (`formats/timeline_dates.py`).
+   The geological-time filter now judges the LABEL, which is what a viewer sees; it used
+   to judge only the model's sort key, so "3,700 million years ago" got through beside an
+   ordinary-looking one. Slack scales with how long ago, not with the size of the year.
+6. **Research sources must be linked with the topic's article BOTH ways**
+   (`research/sources/wikipedia.py`). Top-N search hits for "iron" included Iron Man and
+   Iron Maiden. One-way links are not enough (a hatnote links "Sandal" to a hotel chain),
+   and disambiguation pages are never sources. Fewer sources beat off-topic ones — never
+   backfill. Known residue: "Toothbrush" ↔ "Toothbrush moustache" hatnote each other.
 
 ### Invariant M3 established — do not weaken it
 **A modern reference is a comparison, never a claim.** The channel researches history, not

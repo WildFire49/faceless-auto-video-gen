@@ -10,6 +10,7 @@ from typing import Any
 
 from rewind_ai.core.registry import register
 from rewind_ai.formats.base import GateRules, RawItem
+from rewind_ai.formats.timeline_dates import PRESENT_YEAR, label_years
 
 #: The oldest year this format can use. Generous: the earliest stone tools are
 #: around 3.3 million years old, so anything older is not the history of a made
@@ -21,6 +22,19 @@ MIN_PLAUSIBLE_YEAR = -4_000_000
 
 #: The newest. A fact dated past this is a mistake, not a prediction.
 MAX_PLAUSIBLE_YEAR = 2100
+
+#: How far a sort key may sit from the date its label states. Labels are
+#: approximate ("around 3000 BC", "9,000 years ago"), so the check is for
+#: contradictions -- a BC date sorted as AD, a century on the wrong side of
+#: zero -- not for exactness.
+#:
+#: The slack scales with how LONG AGO the date is, because that is how
+#: uncertainty grows: "around 3000 BC" is fuzzy by centuries, "1850s" by
+#: years. A first version scaled with the size of the year number instead, so
+#: "1850s" was allowed 186 years and "sorted as 1950" passed -- caught by
+#: tests/test_timeline_dates.py. The larger of the two values applies.
+SORT_SLACK_YEARS = 25
+SORT_SLACK_FRACTION = 0.1
 
 
 @register("content_format", "history_timeline")
@@ -86,6 +100,25 @@ class HistoryTimeline:
         )
 
     def implausible_reason(self, item: RawItem) -> str:
+        # The label is what a viewer sees, so it is judged first and on its
+        # own terms. Checking only the model's sort key let "3,700 million
+        # years ago" through with an ordinary-looking sort key beside it.
+        span = label_years(item.label)
+        if span is not None:
+            earliest, latest = span
+            if earliest < MIN_PLAUSIBLE_YEAR:
+                return (
+                    f"the label {item.label!r} is geological rather than historical; "
+                    "true, perhaps, but not the history of a made object"
+                )
+            age = PRESENT_YEAR - earliest
+            slack = max(SORT_SLACK_YEARS, round(SORT_SLACK_FRACTION * age))
+            if not earliest - slack <= item.sort_key <= latest + slack:
+                return (
+                    f"the label says {item.label!r} but it was sorted as year "
+                    f"{item.sort_key}; one of them is wrong"
+                )
+
         if item.sort_key < MIN_PLAUSIBLE_YEAR:
             return (
                 f"year {item.sort_key} is geological rather than historical "

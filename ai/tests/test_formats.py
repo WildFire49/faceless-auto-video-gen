@@ -39,6 +39,11 @@ def item(**kwargs: object) -> RawItem:
 
 # ------------------------------------------------------- history_timeline
 
+#: These tests are about the SORT KEY's bounds. A label with no date in it
+#: keeps the label-versus-sort-key check (tests/test_timeline_dates.py) out of
+#: the way, so each test fails only for the reason it names.
+UNDATED = "the era in question"
+
 
 def test_geological_time_is_rejected() -> None:
     """The exact value that crashed a real run.
@@ -46,13 +51,13 @@ def test_geological_time_is_rejected() -> None:
     Asked about "iron", the model returned the formation of the Earth's core.
     True, correctly sourced, and useless for a series about everyday objects.
     """
-    reason = HistoryTimeline().implausible_reason(item(sort_key=-4_600_000_000))
+    reason = HistoryTimeline().implausible_reason(item(sort_key=-4_600_000_000, label=UNDATED))
     assert reason, "the age of the Earth was accepted as a historical date"
     assert "geological" in reason
 
 
 def test_future_dates_are_rejected() -> None:
-    assert "future" in HistoryTimeline().implausible_reason(item(sort_key=3000))
+    assert "future" in HistoryTimeline().implausible_reason(item(sort_key=3000, label=UNDATED))
 
 
 @pytest.mark.parametrize(
@@ -66,7 +71,7 @@ def test_future_dates_are_rejected() -> None:
     ],
 )
 def test_real_historical_dates_are_accepted(year: int) -> None:
-    assert HistoryTimeline().implausible_reason(item(sort_key=year)) == ""
+    assert HistoryTimeline().implausible_reason(item(sort_key=year, label=UNDATED)) == ""
 
 
 def test_the_limit_is_about_usefulness_not_int32() -> None:
