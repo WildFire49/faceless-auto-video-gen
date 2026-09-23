@@ -1,0 +1,102 @@
+# The evergreen reference bank (SPEC.md 5.3a).
+#
+# Things a broad audience recognises and that will STILL be recognisable next
+# year. Curated by you — this file is meant to be edited constantly, and it is
+# the single biggest lever on whether the jokes land.
+#
+# How it is used: the topic is categorised, matching categories are offered to
+# the model alongside today's live trends, and it proposes comparisons tied to
+# specific approved facts. Nothing here is used automatically.
+#
+# THE RULE (SPEC.md 5.3, CLAUDE.md): a reference compares LOOK, FEELING,
+# PRICE, HYPE or BEHAVIOUR. It never makes a factual claim about the brand.
+# Brands are spoken or shown as TEXT only — never rendered as logos or product
+# designs in generated images.
+#
+# Keep entries short and concrete. "Birkenstock" works; "German footwear
+# brands" does not.
+
+categories:
+  footwear:
+    - Birkenstock
+    - Crocs
+    - Nike Air Force 1
+    - Havaianas
+    - Uggs
+    - "socks with sandals"
+    - "breaking in new shoes"
+
+  drinkware:
+    - Stanley cup
+    - Hydro Flask
+    - Yeti
+    - "emotional support water bottle"
+    - "reusable cup you still forget"
+
+  tech:
+    - AirPods
+    - iPhone
+    - "phone at 1% battery"
+    - Roomba
+    - "smart watch telling you to stand up"
+    - "charging cable drama"
+    - "software update at the worst moment"
+
+  home:
+    - Dyson
+    - "air fryer"
+    - "Amazon next-day delivery"
+    - "IKEA flat-pack instructions"
+    - "the drawer with all the other drawers' stuff"
+
+  clothing:
+    - Lululemon
+    - "Shein haul"
+    - "quiet luxury"
+    - "Canadian tuxedo"
+    - "dry clean only"
+
+  kitchen:
+    - "air fryer"
+    - Le Creuset
+    - "the good knife nobody is allowed to touch"
+    - "meal prep Sunday"
+
+  transport:
+    - Tesla
+    - "e-scooter on the pavement"
+    - "surge pricing"
+    - "parallel parking sensor"
+
+  # Applies to almost any topic — the shapes of modern consumer life.
+  internet:
+    - "1-star review"
+    - "unboxing video"
+    - "limited drop"
+    - "sold out in 3 minutes"
+    - influencer
+    - "life hack"
+    - "subscription fee"
+    - "terms and conditions nobody reads"
+    - "it's giving"
+    - "the algorithm"
+
+# Which categories to offer for a topic. The model is shown the matching
+# categories plus `always`, so a topic with no match still has material.
+#
+# Matching is on whole words in the topic, lowercased.
+topic_categories:
+  footwear: [sandal, sandals, shoe, shoes, boot, boots, slipper, sneaker, footwear]
+  drinkware: [cup, mug, bottle, flask, glass, tumbler, thermos]
+  tech: [mouse, keyboard, computer, phone, camera, radio, television, tv, headphone, battery]
+  home: [iron, vacuum, lamp, chair, mattress, broom, fridge, refrigerator, washing]
+  clothing: [shirt, trousers, jeans, coat, hat, sock, socks, glove, gloves, zip, zipper, button]
+  kitchen: [fork, spoon, knife, pan, pot, kettle, oven, toaster, blender]
+  transport: [bicycle, bike, car, train, scooter, skateboard, wheel]
+
+# Offered for every topic, whatever it is.
+always: [internet]
+
+# Categories a topic should NEVER draw from. Reserved for future use; a
+# footwear episode reaching for a transport reference is odd but harmless.
+never: []

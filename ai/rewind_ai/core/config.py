@@ -77,6 +77,21 @@ class ResearchSettings:
 
 
 @dataclass(frozen=True, slots=True)
+class RelevanceSettings:
+    """The ``relevance:`` block of ``config/channel.yaml``."""
+
+    #: Trend sources to consult, in order. A source that is down is skipped.
+    sources: list[str] = field(default_factory=lambda: ["google_trends", "wiki_pageviews"])
+    #: Hard ceiling on how many comparisons a human may SELECT. Three is the
+    #: point at which a history video stops being history (SPEC.md 5.3).
+    max_selectable: int = 3
+    #: How many to generate for the human to choose from.
+    max_proposals: int = 8
+    #: Country for trending searches.
+    geo: str = "US"
+
+
+@dataclass(frozen=True, slots=True)
 class ContentSettings:
     """The ``content:`` block of ``config/channel.yaml``.
 
@@ -96,6 +111,7 @@ class Settings:
     llm: LLMSettings = field(default_factory=LLMSettings)
     research: ResearchSettings = field(default_factory=ResearchSettings)
     content: ContentSettings = field(default_factory=ContentSettings)
+    relevance: RelevanceSettings = field(default_factory=RelevanceSettings)
 
 
 def find_config_dir(start: Path | None = None) -> Path:
@@ -144,6 +160,22 @@ def load(config_dir: Path | None = None) -> Settings:
         llm=_llm_settings(channel),
         research=_research_settings(channel),
         content=_content_settings(channel),
+        relevance=_relevance_settings(channel),
+    )
+
+
+def _relevance_settings(channel: dict[str, Any]) -> RelevanceSettings:
+    raw = channel.get("relevance")
+    if not isinstance(raw, dict):
+        return RelevanceSettings()
+
+    defaults = RelevanceSettings()
+    sources = raw.get("sources")
+    return RelevanceSettings(
+        sources=[str(s) for s in sources] if isinstance(sources, list) else defaults.sources,
+        max_selectable=int(raw.get("max_selectable", defaults.max_selectable)),
+        max_proposals=int(raw.get("max_proposals", defaults.max_proposals)),
+        geo=str(raw.get("geo", defaults.geo)),
     )
 
 

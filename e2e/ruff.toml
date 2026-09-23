@@ -1,0 +1,18 @@
+# The E2E harness is the primary proof that a milestone works (CLAUDE.md),
+# so it is held to the same style as the worker it drives. It lives outside
+# ai/ and therefore outside ai/pyproject.toml's reach, which left it linted by
+# nothing at all until M3.
+#
+# The rule set is deliberately lighter than the worker's: this is a test
+# harness, and rules about broad excepts or imports inside functions get in
+# the way of a harness whose job is to survive anything and still write its
+# artifact.
+
+line-length = 100
+target-version = "py311"
+
+[lint]
+# Notably absent: BLE (the harness must catch anything and still write its
+# artifact) and PL (verify_evidence is imported inside the check that uses it,
+# so the harness runs even when the worker's dependencies are missing).
+select = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]

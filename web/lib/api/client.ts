@@ -15,6 +15,7 @@ import { createConnectTransport } from '@connectrpc/connect-web';
 
 import { RewindService } from '@/lib/gen/rewind/v1/api_pb';
 import { FactsService } from '@/lib/gen/rewind/v1/facts_pb';
+import { ReferencesService } from '@/lib/gen/rewind/v1/references_pb';
 import { VideoService } from '@/lib/gen/rewind/v1/video_pb';
 
 /**
@@ -42,5 +43,11 @@ export const videoClient: Client<typeof VideoService> = createClient(VideoServic
 
 /** Gate A: the researched fact sheet. */
 export const factsClient: Client<typeof FactsService> = createClient(FactsService, transport);
+
+/** Gate B: the proposed modern comparisons. */
+export const referencesClient: Client<typeof ReferencesService> = createClient(
+  ReferencesService,
+  transport,
+);
 
 export { baseUrl as apiBaseUrl };

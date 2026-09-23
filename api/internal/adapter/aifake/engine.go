@@ -37,6 +37,14 @@ type Engine struct {
 	// ResearchCalls records every research request, so a test can assert the
 	// topic and extra URLs were forwarded.
 	ResearchCalls []domain.FactSheetRequest
+
+	// ReferenceResult, when set, is returned by ProposeReferences.
+	ReferenceResult *domain.ReferencesResult
+	// ReferenceErr, when set, makes ProposeReferences fail.
+	ReferenceErr error
+	// ReferenceCalls records every relevance request, so a test can assert
+	// which facts were forwarded.
+	ReferenceCalls []domain.ReferencesRequest
 }
 
 // NewHealthy returns a fake worker that reports itself fully operational.

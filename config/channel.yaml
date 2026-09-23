@@ -24,8 +24,22 @@ music:
   target_bpm: 96 # one bar = 2.5s, two bars = one 5s beat
   duck_db: -14
 
+relevance:
+  # Live trend sources, in order. A source that is down is skipped, never
+  # fatal: the evergreen bank alone is enough to make an episode.
+  # Shipped: google_trends, wiki_pageviews.
+  # YouTube's mostPopular needs an API key and Reddit needs ToS care -- both
+  # are one file each in ai/rewind_ai/relevance/sources/ when you want them.
+  sources: [google_trends, wiki_pageviews]
+  geo: US
+  # THE HARD CEILING (SPEC.md 5.3). Three is the point at which a history
+  # video stops being history and starts being an advert. Enforced in Go, so
+  # the CLI and the dashboard cannot disagree.
+  max_selectable: 3
+  # How many to generate for you to choose from.
+  max_proposals: 8
+
 limits:
-  max_modern_refs_per_video: 3
   max_sfx_per_beat: 1
   max_words_per_beat: 14
 

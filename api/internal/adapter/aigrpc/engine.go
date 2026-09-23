@@ -25,12 +25,14 @@ import (
 
 // Engine is a gRPC-backed AI worker client.
 type Engine struct {
-	conn     *grpc.ClientConn
-	health   rewindv1.HealthServiceClient
-	research rewindv1.ResearchServiceClient
+	conn      *grpc.ClientConn
+	health    rewindv1.HealthServiceClient
+	research  rewindv1.ResearchServiceClient
+	relevance rewindv1.RelevanceServiceClient
 
-	healthTimeout   time.Duration
-	researchTimeout time.Duration
+	healthTimeout    time.Duration
+	researchTimeout  time.Duration
+	relevanceTimeout time.Duration
 }
 
 // Options configure the client. Everything here comes from
@@ -46,6 +48,9 @@ type Options struct {
 	// ResearchTimeout bounds BuildFactSheet. Generous: it fetches several
 	// articles and runs the model over each of them.
 	ResearchTimeout time.Duration
+	// RelevanceTimeout bounds ProposeReferences. Much shorter: one model call
+	// over a short prompt, plus a cached trend lookup.
+	RelevanceTimeout time.Duration
 }
 
 // New creates the client.
@@ -65,6 +70,9 @@ func New(opts Options) (*Engine, error) {
 	}
 	if opts.ResearchTimeout <= 0 {
 		opts.ResearchTimeout = 5 * time.Minute
+	}
+	if opts.RelevanceTimeout <= 0 {
+		opts.RelevanceTimeout = 3 * time.Minute
 	}
 
 	conn, err := grpc.NewClient(
@@ -97,11 +105,13 @@ func New(opts Options) (*Engine, error) {
 	}
 
 	return &Engine{
-		conn:            conn,
-		health:          rewindv1.NewHealthServiceClient(conn),
-		research:        rewindv1.NewResearchServiceClient(conn),
-		healthTimeout:   opts.HealthTimeout,
-		researchTimeout: opts.ResearchTimeout,
+		conn:             conn,
+		health:           rewindv1.NewHealthServiceClient(conn),
+		research:         rewindv1.NewResearchServiceClient(conn),
+		relevance:        rewindv1.NewRelevanceServiceClient(conn),
+		healthTimeout:    opts.HealthTimeout,
+		researchTimeout:  opts.ResearchTimeout,
+		relevanceTimeout: opts.RelevanceTimeout,
 	}, nil
 }
 

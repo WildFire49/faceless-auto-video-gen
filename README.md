@@ -148,9 +148,10 @@ so the architecture cannot erode quietly.
 
 ## Current status
 
-**M2 — Research & Gate A: complete.** The pipeline does real work: it fetches Wikipedia, asks a
-local model to extract dated events, throws away anything it cannot trace back to the source, and
-presents what survives for review at Gate A.
+**M3 — Relevance & Gate B: complete.** The pipeline fetches Wikipedia, asks a local model to
+extract dated events, throws away anything it cannot trace back to the source, and presents what
+survives at Gate A. It then proposes modern comparisons for the facts you approved — and refuses
+to let more than three of them into one video.
 
 ```bash
 rewind add "iron"                 # queue a topic
@@ -185,8 +186,20 @@ A fact that fails either check is dropped before a human ever sees it. The count
 Gate A, which makes them a measurement of the *model*: a high rejection rate means that model
 invents on this task.
 
-Next up is **M3**: the relevance engine and Gate B — finding modern references that make the
-history funny. See [SPEC.md §9](SPEC.md#9-build-milestones-one-claude-code-session-each).
+### The rule Gate B rests on
+
+**A modern reference is a comparison, never a claim.** We research history, not brands — so
+nothing the narrator says about a modern company has a source behind it, and therefore it may
+not say anything about one. "It was the Stanley cup of ancient Egypt" compares hype. "Stanley
+invented the vacuum flask" is a claim, and it is thrown out before you see it, along with
+anything that reaches for tragedy, politics, identity, religion or someone's suffering to get a
+laugh. Every surviving comparison must attach to a fact *you* approved at Gate A.
+
+The cap is **three per video** — the point at which a history video starts sounding like an
+advert. It is enforced in the domain layer, so no amount of clicking can get a fourth past it.
+
+Next up is **M4**: the script writer and Gate C.
+See [SPEC.md §9](SPEC.md#9-build-milestones-one-claude-code-session-each).
 
 ---
 

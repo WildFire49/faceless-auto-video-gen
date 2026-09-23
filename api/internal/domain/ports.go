@@ -36,6 +36,39 @@ type AIEngine interface {
 	// check, a step that cannot do its job IS a failure, and Go turns it into
 	// status=error with a resume point.
 	BuildFactSheet(ctx context.Context, req FactSheetRequest, report func(Progress)) (*FactSheetResult, error)
+
+	// ProposeReferences generates modern comparisons for approved facts and
+	// writes references.json into the video's project folder.
+	ProposeReferences(ctx context.Context, req ReferencesRequest, report func(Progress)) (*ReferencesResult, error)
+}
+
+// ApprovedFact is the slice of a fact the relevance engine is allowed to see.
+//
+// Deliberately not the whole Fact: the worker has no business with evidence or
+// sources here, and handing them over would invite it to reason about their
+// truth rather than just be funny about the claim.
+type ApprovedFact struct {
+	ID    string
+	Label string
+	Claim string
+	Group string
+}
+
+// ReferencesRequest is what the worker needs to propose comparisons.
+type ReferencesRequest struct {
+	VideoID      string
+	Topic        string
+	Facts        []ApprovedFact
+	MaxProposals int
+}
+
+// ReferencesResult summarises what the relevance step produced.
+type ReferencesResult struct {
+	Topic              string
+	ProposalCount      int
+	ReferencesJSONPath string
+	Generated          int
+	Rejected           int
 }
 
 // Progress is one update from a long-running worker call.

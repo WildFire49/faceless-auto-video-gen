@@ -124,7 +124,9 @@ tasks:
   dev:ai:
     dir: ai
     cmds:
-      - "{{.PY}} -m rewind_ai.server --llm-model qwen2.5:14b"
+      # The model is config/channel.yaml's to choose, not a flag here --
+      # a flag would let the dev stack and the E2E run disagree silently.
+      - "{{.PY}} -m rewind_ai.server"
 
   dev:api:
     dir: api
@@ -203,6 +205,7 @@ tasks:
       - task: proto:lint
       - task: lint:go
       - task: lint:python
+      - task: lint:e2e
       - task: lint:web
       - task: test
 
@@ -218,7 +221,18 @@ tasks:
       - "{{.PY}} -m ruff check ."
       - "{{.PY}} -m ruff format --check ."
       - "{{.PY}} -m mypy"
-      - "{{.PY}} -m importlinter.cli lint"
+      # The console script, not `python -m importlinter.cli`: the module form
+      # exits 0 but prints NOTHING on Windows, so a passing architecture check
+      # is indistinguishable from one that never ran.
+      - "{{.VENV_PATH}}/lint-imports{{exeExt}}"
+
+  # The harness lives outside ai/, so ai/pyproject.toml does not reach it and
+  # nothing linted it at all until M3. It is the primary proof a milestone
+  # works -- it gets checked like everything else. Config: e2e/ruff.toml.
+  lint:e2e:
+    cmds:
+      - "{{.PY}} -m ruff check e2e"
+      - "{{.PY}} -m ruff format --check e2e"
 
   lint:web:
     dir: web

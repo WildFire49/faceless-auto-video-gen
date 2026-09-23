@@ -34,6 +34,7 @@ type App struct {
 	Videos   *service.VideoService
 	Gates    *service.GateService
 	Facts    *service.FactsService
+	Refs     *service.ReferencesService
 	Runner   *pipeline.Runner
 	Registry *pipeline.Registry
 }
@@ -67,10 +68,12 @@ func Build(
 	jobRepo := sqlite.NewJobRepo(db)
 	reviewLog := reviewmirror.New(sqlite.NewReviewLog(db), projectsDir, log)
 	factStore := factstore.New(projectsDir)
+	refStore := factstore.NewRefStore(projectsDir)
 
 	clk := clock.New()
 
 	factsService := service.NewFactsService(factStore, videoRepo, reviewLog, clk)
+	refsService := service.NewReferencesService(refStore, factStore, videoRepo, reviewLog, clk)
 
 	// Gate A cannot be approved until the fact sheet meets its bar. The rule
 	// itself lives in the domain; this just connects it to the gate.
@@ -89,6 +92,20 @@ func Build(
 			}
 			return nil
 		},
+		domain.GateB: func(ctx context.Context, videoID string) error {
+			view, err := refsService.GetReferences(ctx, videoID)
+			if err != nil {
+				return err
+			}
+			if !view.Exists {
+				return fmt.Errorf("%w: no comparisons yet — run the relevance step first",
+					domain.ErrValidation)
+			}
+			if !view.Readiness.CanApprove {
+				return fmt.Errorf("%w: %s", domain.ErrValidation, view.Readiness.Blocker)
+			}
+			return nil
+		},
 	}
 
 	videoService := service.NewVideoService(videoRepo, reviewLog, db, clk, idgen.New())
@@ -99,6 +116,7 @@ func Build(
 	// 0 means "use whatever the content format requires", which the worker
 	// knows and Go does not need to.
 	registry.MustRegister(steps.NewResearch(ai, channel.Research.MinFacts))
+	registry.MustRegister(steps.NewRelevance(ai, factStore, channel.Relevance.MaxProposals))
 
 	runner := pipeline.NewRunner(registry, videoRepo, jobRepo, db, clk, newJobID, log)
 	videoService.WithPipeline(jobRepo, runner)
@@ -108,6 +126,7 @@ func Build(
 		Videos:   videoService,
 		Gates:    gateService,
 		Facts:    factsService,
+		Refs:     refsService,
 		Runner:   runner,
 		Registry: registry,
 	}, nil

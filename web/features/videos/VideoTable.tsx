@@ -160,6 +160,7 @@ const columns: GridColDef<Video>[] = [
 /** Which gate page a video's row should open, if any. */
 const GATE_ROUTES: Partial<Record<Gate, string>> = {
   [Gate.A_FACTS]: 'facts',
+  [Gate.B_REFERENCES]: 'references',
 };
 
 export function VideoTable({ videos, loading }: { videos: Video[]; loading: boolean }) {

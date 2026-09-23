@@ -27,7 +27,8 @@ ai:
     # ARTICLE, so three articles is ~5 minutes before any variance. 300s was
     # the original guess and it is too tight -- it would cancel honest work.
     research: 1200
-    relevance: 120
+    # One model call over a short prompt, plus a cached trend lookup.
+    relevance: 180
     script: 180
     voice: 900
     visuals: 1800

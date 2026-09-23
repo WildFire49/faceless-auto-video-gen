@@ -211,7 +211,6 @@ export function FactsGate({ video }: { video: Video }) {
       <GateDecisionBar video={video} view={view} />
 
       <EditFactDialog
-        videoId={videoId}
         fact={editing}
         onClose={() => setEditing(null)}
         mutations={mutations}

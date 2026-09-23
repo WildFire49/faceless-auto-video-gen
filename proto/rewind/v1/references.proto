@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+package rewind.v1;
+
+import "rewind/v1/relevance.proto";
+
+// ReferencesService is the Gate B surface for the dashboard (SPEC.md 5.3, 8.2).
+//
+// The shape mirrors FactsService deliberately: every mutation returns the whole
+// recomputed view, because Gate B's rules depend on the sheet as a whole -- how
+// many are selected, whether any has expired.
+service ReferencesService {
+  rpc GetReferences(GetReferencesRequest) returns (GetReferencesResponse);
+
+  // SelectProposal ticks or unticks one comparison.
+  //
+  // Selecting more than max_selectable is refused rather than silently
+  // dropping one: three is a hard limit on how much of a video can be
+  // "basically a modern brand" before it stops being history (SPEC.md 5.3).
+  rpc SelectProposal(SelectProposalRequest) returns (SelectProposalResponse);
+
+  // UpdateProposal rewrites a comparison's wording.
+  rpc UpdateProposal(UpdateProposalRequest) returns (UpdateProposalResponse);
+
+  // DeleteProposal removes one from the sheet.
+  rpc DeleteProposal(DeleteProposalRequest) returns (DeleteProposalResponse);
+
+  // AddProposal adds a comparison the human wrote themselves, or a trend they
+  // pasted in from somewhere the scanner cannot reach (TikTok, Instagram).
+  rpc AddProposal(AddProposalRequest) returns (AddProposalResponse);
+}
+
+message ReferencesView {
+  // False until the relevance step has run.
+  bool exists = 1;
+  ReferenceSheet sheet = 2;
+
+  bool can_approve = 3;
+  // e.g. "nothing selected yet" or "4 selected, the limit is 3".
+  string approval_blocker = 4;
+
+  int32 selected_count = 5;
+  int32 max_selectable = 6;
+
+  // Selected HOT references whose freshness date has passed. Not fatal at
+  // Gate B -- you may still want them -- but Gate F warns, so it is better to
+  // know now (SPEC.md 5.3).
+  repeated string stale_reference_ids = 7;
+}
+
+message GetReferencesRequest {
+  string video_id = 1;
+}
+message GetReferencesResponse {
+  ReferencesView view = 1;
+}
+
+message SelectProposalRequest {
+  string video_id = 1;
+  string proposal_id = 2;
+  bool selected = 3;
+}
+message SelectProposalResponse {
+  ReferencesView view = 1;
+}
+
+message UpdateProposalRequest {
+  string video_id = 1;
+  string proposal_id = 2;
+  string comparison = 3;
+  string why_funny = 4;
+  // Re-pointing a comparison at a different approved fact.
+  string linked_fact_id = 5;
+}
+message UpdateProposalResponse {
+  ReferencesView view = 1;
+}
+
+message DeleteProposalRequest {
+  string video_id = 1;
+  string proposal_id = 2;
+  string reason = 3;
+}
+message DeleteProposalResponse {
+  ReferencesView view = 1;
+}
+
+message AddProposalRequest {
+  string video_id = 1;
+  string reference = 2;
+  string comparison = 3;
+  string why_funny = 4;
+  // Required: a comparison must attach to an approved fact.
+  string linked_fact_id = 5;
+}
+message AddProposalResponse {
+  ReferencesView view = 1;
+}

@@ -1,0 +1,136 @@
+syntax = "proto3";
+
+package rewind.v1;
+
+import "rewind/v1/common.proto";
+
+// RelevanceService proposes modern comparisons that make the facts land
+// (SPEC.md 5.3).
+//
+// Two kinds of reference:
+//
+//   EVERGREEN -- from a bank you curate (config/reference_bank.yaml). Always
+//   safe to use, and still funny next year.
+//
+//   HOT -- scraped from live trend sources today. Funnier now, dead in a
+//   month, so each carries an expiry that Gate F warns about.
+//
+// THE RULE THIS SERVICE MUST NOT BREAK (SPEC.md 5.3, CLAUDE.md): a reference
+// compares LOOK, FEELING, PRICE, HYPE or BEHAVIOUR. It never asserts a fact
+// about a brand or a person. "Roman caligae were basically Birkenstocks with
+// spikes" is a comparison; "Birkenstock was founded in Rome" is a lie.
+service RelevanceService {
+  // ProposeReferences generates comparisons tied to approved facts.
+  rpc ProposeReferences(ProposeReferencesRequest) returns (stream ProposeReferencesResponse);
+
+  // ScanTrends refreshes the cached trend list. Called on a schedule and by
+  // `rewind doctor`; ProposeReferences uses the cache rather than forcing a
+  // scan, so a dead trend source never blocks a video.
+  rpc ScanTrends(ScanTrendsRequest) returns (ScanTrendsResponse);
+}
+
+// ReferenceKind distinguishes a curated reference from a trending one.
+enum ReferenceKind {
+  REFERENCE_KIND_UNSPECIFIED = 0;
+  // From config/reference_bank.yaml. No expiry.
+  REFERENCE_KIND_EVERGREEN = 1;
+  // From a live trend source. Expires.
+  REFERENCE_KIND_HOT = 2;
+  // Typed in by the human at Gate B.
+  REFERENCE_KIND_MANUAL = 3;
+}
+
+message ProposeReferencesRequest {
+  string video_id = 1;
+  string topic = 2;
+  // The APPROVED facts only. A comparison must attach to a fact a human has
+  // already accepted, or it would smuggle unapproved material into the script.
+  repeated ApprovedFact facts = 3;
+  // Ceiling on proposals to generate. The human picks at most
+  // `max_selectable` of them at Gate B.
+  int32 max_proposals = 4;
+}
+
+// ApprovedFact is the slice of a fact the relevance engine needs. Deliberately
+// not the whole Fact: this service has no business with evidence or sources,
+// and passing them would invite it to reason about their truth.
+message ApprovedFact {
+  string id = 1;
+  string label = 2;
+  string claim = 3;
+  string group = 4;
+}
+
+message ProposeReferencesResponse {
+  oneof event {
+    Progress progress = 1;
+    ReferenceSheet result = 2;
+    Failure failure = 3;
+  }
+}
+
+// Proposal is one suggested comparison (SPEC.md 5.3).
+message Proposal {
+  string id = 1; // "r1", "r2", ...
+
+  // The modern thing being compared to: "Birkenstock", "Stanley cup".
+  string reference = 2;
+  ReferenceKind kind = 3;
+
+  // Which approved fact this attaches to. Required: a comparison floating
+  // free of a fact has nothing to be funny ABOUT.
+  string linked_fact_id = 4;
+
+  // The line itself, as a narrator would say it.
+  string comparison = 5;
+  // Why it works, for the human deciding whether it does.
+  string why_funny = 6;
+  // What is being compared -- look, price, hype, behaviour -- stated so a
+  // reviewer can check it is not a factual claim about the brand.
+  string accuracy_note = 7;
+
+  // For HOT references: the date after which this stops being current.
+  // Gate F warns if the video is still unpublished by then.
+  string fresh_until = 8; // RFC 3339 date, empty for evergreen
+  // Which trend source produced it, for HOT references.
+  string source = 9;
+
+  // Set by the human at Gate B; the worker always leaves it false.
+  bool selected = 10;
+
+  // Populated when a safety rule rejected this proposal, so the reviewer can
+  // see WHAT was filtered rather than wondering why the list is short.
+  string rejected_reason = 11;
+}
+
+message ReferenceSheet {
+  string topic = 1;
+  repeated Proposal proposals = 2;
+  // Where the worker wrote references.json.
+  string references_json_path = 3;
+
+  // How many the model proposed and how many the safety rules threw out --
+  // the same model-quality signal the fact sheet carries.
+  int32 candidates_generated = 4;
+  int32 candidates_rejected = 5;
+  repeated string rejections = 6;
+
+  // The maximum a human may select, from config. Carried in the sheet so the
+  // gate machinery enforces it without a second source of truth.
+  int32 max_selectable = 7;
+
+  // Which trend sources were consulted, and when the cache was last filled.
+  repeated string trend_sources = 8;
+  string trends_fetched_at = 9;
+}
+
+message ScanTrendsRequest {
+  // Refresh even when the cache is still fresh.
+  bool force = 1;
+}
+message ScanTrendsResponse {
+  int32 term_count = 1;
+  repeated string sources = 2;
+  string fetched_at = 3;
+  bool from_cache = 4;
+}

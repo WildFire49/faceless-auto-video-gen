@@ -85,10 +85,11 @@ func run() error {
 		log.Warn("using the FAKE AI worker; no Python process will be contacted")
 	} else {
 		engine, err := aigrpc.New(aigrpc.Options{
-			Addr:            cfg.AI.GRPCAddr,
-			MaxMessageBytes: cfg.AI.MaxMessageBytes,
-			HealthTimeout:   cfg.Timeout("health", 5*time.Second),
-			ResearchTimeout: cfg.Timeout("research", 5*time.Minute),
+			Addr:             cfg.AI.GRPCAddr,
+			MaxMessageBytes:  cfg.AI.MaxMessageBytes,
+			HealthTimeout:    cfg.Timeout("health", 5*time.Second),
+			ResearchTimeout:  cfg.Timeout("research", 5*time.Minute),
+			RelevanceTimeout: cfg.Timeout("relevance", 3*time.Minute),
 		})
 		if err != nil {
 			return fmt.Errorf("creating AI client: %w", err)
@@ -134,6 +135,10 @@ func run() error {
 	factsPath, factsHandler := rewindv1connect.NewFactsServiceHandler(
 		connectrpc.NewFactsHandler(app.Facts))
 	mux.Handle(factsPath, factsHandler)
+
+	refsPath, refsHandler := rewindv1connect.NewReferencesServiceHandler(
+		connectrpc.NewReferencesHandler(app.Refs))
+	mux.Handle(refsPath, refsHandler)
 
 	// A plain liveness endpoint, so `curl` and container probes do not need to
 	// speak Connect to find out whether the process is up.

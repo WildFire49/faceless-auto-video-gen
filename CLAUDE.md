@@ -120,8 +120,25 @@ interface it implements.
   in page or component code. Every animation respects `prefers-reduced-motion`.
 
 ## Current milestone
-M2 — Research & Gate A: **COMPLETE**, awaiting review. Do not start M3 without an explicit
-"approved, start M3" from the user.
+M3 — Relevance & Gate B: **COMPLETE**, awaiting review. Do not start M4 without an explicit
+"approved, start M4" from the user.
+
+### Invariant M3 established — do not weaken it
+**A modern reference is a comparison, never a claim.** The channel researches history, not
+brands, so nothing it says about a modern company has a source behind it. Two rules enforce
+this and both are load-bearing:
+
+1. `ai/rewind_ai/relevance/rules.py` rejects any proposal whose wording asserts something
+   about the brand (founded, invented, patented, acquired, "the first company to…") or
+   reaches for a subject the channel avoids. It is a Chain of Responsibility: add a rule,
+   do not edit the existing ones.
+2. Every proposal must link to a fact the reviewer **approved at Gate A**. An unattached
+   comparison has nothing to be funny about and no fact to protect.
+
+The cap of three (`config/channel.yaml: relevance.max_selectable`) is the point at which a
+history video starts sounding like an advert. It is enforced in `domain.SelectProposal`, not
+in the handler, so no transport can route around it. A zero there would mean "no limit", so
+config loading treats `<= 0` as the default rather than as unlimited.
 
 ### Invariant M2b established — content format is configurable
 **"History of an everyday object" is ONE format, not the product.** The product is
@@ -150,7 +167,25 @@ extracted sentence against the fetched source TWO ways, and both are load-bearin
 If you ever relax the number check, a falsified date reaches a human. Every later module
 consumes these facts, so this is the foundation everything else stands on.
 
-### Things the E2E run caught that unit tests did not
+### Things the M3 E2E run caught that unit tests did not
+- **a handler can be written, wired and unit tested and still never be SERVED.**
+  `RelevanceService` had sixteen passing tests and was missing from `build_server`, so the
+  first Gate B run died on `Unimplemented: Method not found!`. Registration is now a table,
+  logged at startup and checked against the proto contract by `tests/test_server_serves.py`.
+- **whatever a prompt lists as a heading, a model will answer with.** Grouping the bank as
+  `home: Dyson, air fryer, …` produced proposals whose reference was `"home"`. The prompt
+  and the accept-check are now built from ONE function (`_offered`), so the model can never
+  break a rule it was not shown.
+- **a count returned over gRPC but not written to disk is a count that is lost.** Go rebuilds
+  the whole Gate B view from `references.json` on every request.
+- **whichever check runs first is the one a human reads.** Safety rules therefore run before
+  the mechanical ones: a tasteless comparison must be reported as tasteless, not as
+  "that brand is not on the list".
+- **a check that can pass without testing anything is worse than no check.** The max-3 check
+  used to excuse itself when the model wrote fewer than four comparisons; it now adds its own
+  through `AddProposal` so the cap is always actually hit.
+
+### Things the M2 E2E run caught that unit tests did not
 - **a cap on items must preserve variety.** Keeping the best-scoring 40 of 172 collapsed
   them into 2 eras and Gate A refused them. Selection is round-robin across groups.
   Fixing "too many to review" created "too narrow to use" -- watch for that shape.

@@ -22,6 +22,10 @@ from rewind_ai.health.base import Probe
 from rewind_ai.health.service import HealthChecker
 from rewind_ai.llm import factory as llm_factory
 from rewind_ai.llm.base import LLM, LLMConfig
+from rewind_ai.relevance import sources as trend_source_package
+from rewind_ai.relevance.bank import TrendCache, load_bank
+from rewind_ai.relevance.base import TrendSource
+from rewind_ai.relevance.service import RelevanceConfig, RelevanceService
 from rewind_ai.research import sources as research_source_package
 from rewind_ai.research.base import SourceFetcher
 from rewind_ai.research.service import ResearchConfig, ResearchService
@@ -39,6 +43,8 @@ class Container:
     settings: Settings
     health: HealthChecker
     research: ResearchService
+    relevance: RelevanceService
+    trends: TrendCache
     llm: LLM
     content_format: ContentFormat
 
@@ -50,6 +56,7 @@ def build(settings: Settings) -> Container:
     # added without editing this file (SPEC.md 14.2).
     registry.load_providers(probe_package)
     registry.load_providers(research_source_package)
+    registry.load_providers(trend_source_package)
 
     llm_config = LLMConfig(
         provider=settings.llm.provider,
@@ -63,6 +70,12 @@ def build(settings: Settings) -> Container:
 
     content_format = format_factory.build(settings.content.format)
     fetchers = _build_fetchers(settings)
+    trend_sources = _build_trend_sources(settings)
+
+    # The cache lives beside the projects rather than inside one: it is shared
+    # by every video made today (SPEC.md 5.3b).
+    trends = TrendCache(settings.paths.projects.parent / "trends_cache.json", trend_sources)
+    bank = load_bank(settings.config_dir)
     probes = _build_probes(llm_model=settings.llm.model, base_url=settings.llm.base_url)
 
     log.info(
@@ -72,6 +85,8 @@ def build(settings: Settings) -> Container:
         llm=settings.llm.provider,
         model=settings.llm.model,
         research_sources=[f.name for f in fetchers],
+        trend_sources=[t.name for t in trend_sources],
+        reference_categories=sorted(bank.categories),
         health_probes=registry.available("health_probe"),
     )
 
@@ -91,7 +106,39 @@ def build(settings: Settings) -> Container:
             ),
             projects_dir=settings.paths.projects,
         ),
+        trends=trends,
+        relevance=RelevanceService(
+            llm=llm,
+            bank=bank,
+            trends=trends,
+            config=RelevanceConfig(
+                max_selectable=settings.relevance.max_selectable,
+                max_proposals=settings.relevance.max_proposals,
+            ),
+            projects_dir=settings.paths.projects,
+        ),
     )
+
+
+def _build_trend_sources(settings: Settings) -> list[TrendSource]:
+    """Instantiate the trend sources named in config.
+
+    An unknown name is logged and skipped rather than fatal: trends are a
+    garnish, and refusing to start the worker because one source was
+    misspelled would be disproportionate.
+    """
+    built: list[TrendSource] = []
+
+    for name in settings.relevance.sources:
+        try:
+            cls = registry.get("trend_source", name)
+        except registry.ProviderError:
+            log.error("unknown trend source in config", source=name)
+            continue
+
+        built.append(cls(geo=settings.relevance.geo) if name == "google_trends" else cls())
+
+    return built
 
 
 def _build_fetchers(settings: Settings) -> list[SourceFetcher]:

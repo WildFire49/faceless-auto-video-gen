@@ -15,13 +15,15 @@ from __future__ import annotations
 import argparse
 import signal
 import sys
+from collections.abc import Callable
 from concurrent import futures
 from pathlib import Path
 from types import FrameType
+from typing import Any
 
 import grpc
 
-from rewind.v1 import health_pb2_grpc, research_pb2_grpc
+from rewind.v1 import health_pb2_grpc, relevance_pb2_grpc, research_pb2_grpc
 from rewind_ai.core import config, container
 from rewind_ai.core.logging import configure, get_logger
 
@@ -55,10 +57,37 @@ def build_server(settings: config.Settings) -> tuple[grpc.Server, str]:
     # stubs, and keeping that off the import path until the server is actually
     # being built keeps `python -c "import rewind_ai"` fast and side-effect free.
     from rewind_ai.handlers.health import HealthHandler
+    from rewind_ai.handlers.relevance import RelevanceHandler
     from rewind_ai.handlers.research import ResearchHandler
 
-    health_pb2_grpc.add_HealthServiceServicer_to_server(HealthHandler(deps.health), server)
-    research_pb2_grpc.add_ResearchServiceServicer_to_server(ResearchHandler(deps.research), server)
+    # A table rather than a run of registration calls, so that "which services
+    # does this worker serve?" has ONE answer -- one that is logged at startup
+    # and checked against the proto contract by tests/test_server_serves.py.
+    #
+    # An M3 E2E run failed with `Unimplemented: Method not found!` because
+    # RelevanceService was written, wired into the container and unit tested,
+    # and then simply never registered here. Nothing in the worker knew the
+    # difference, and no isolated test could have.
+    # Each generated add_*_to_server takes its own servicer type, so the table
+    # can only be typed at the widest shape they share.
+    served: dict[str, tuple[Callable[[Any, grpc.Server], None], Any]] = {
+        "HealthService": (
+            health_pb2_grpc.add_HealthServiceServicer_to_server,
+            HealthHandler(deps.health),
+        ),
+        "ResearchService": (
+            research_pb2_grpc.add_ResearchServiceServicer_to_server,
+            ResearchHandler(deps.research),
+        ),
+        "RelevanceService": (
+            relevance_pb2_grpc.add_RelevanceServiceServicer_to_server,
+            RelevanceHandler(deps.relevance, deps.trends),
+        ),
+    }
+    for add_to_server, handler in served.values():
+        add_to_server(handler, server)
+
+    log.info("serving", services=sorted(served))
 
     # Insecure is correct ONLY because this binds loopback and the Go API is on
     # the same machine (SPEC.md 13.5). If either end ever moves off this box,

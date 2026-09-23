@@ -117,6 +117,10 @@ type Channel struct {
 	LLM struct {
 		Model string `koanf:"model"`
 	} `koanf:"llm"`
+	Relevance struct {
+		MaxSelectable int `koanf:"max_selectable"`
+		MaxProposals  int `koanf:"max_proposals"`
+	} `koanf:"relevance"`
 }
 
 // LoadChannel reads channel.yaml.
@@ -143,6 +147,14 @@ func LoadChannel(configDir string) (Channel, error) {
 	}
 	if cfg.Research.MinEras <= 0 {
 		cfg.Research.MinEras = 4
+	}
+	// SPEC.md 5.3: at most three modern references per video. A zero here
+	// would mean "no limit", which is the one value this must never be.
+	if cfg.Relevance.MaxSelectable <= 0 {
+		cfg.Relevance.MaxSelectable = 3
+	}
+	if cfg.Relevance.MaxProposals <= 0 {
+		cfg.Relevance.MaxProposals = 8
 	}
 	return cfg, nil
 }

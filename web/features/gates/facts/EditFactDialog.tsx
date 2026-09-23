@@ -28,12 +28,10 @@ import { palette } from '@/theme/tokens';
 type Mutations = ReturnType<typeof useFactMutations>;
 
 export function EditFactDialog({
-  videoId,
   fact,
   onClose,
   mutations,
 }: {
-  videoId: string;
   fact: Fact | null;
   onClose: () => void;
   mutations: Mutations;
