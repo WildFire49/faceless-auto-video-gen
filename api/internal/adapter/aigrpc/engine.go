@@ -29,10 +29,13 @@ type Engine struct {
 	health    rewindv1.HealthServiceClient
 	research  rewindv1.ResearchServiceClient
 	relevance rewindv1.RelevanceServiceClient
+	script    rewindv1.ScriptServiceClient
 
 	healthTimeout    time.Duration
 	researchTimeout  time.Duration
 	relevanceTimeout time.Duration
+	scriptTimeout    time.Duration
+	validateTimeout  time.Duration
 }
 
 // Options configure the client. Everything here comes from
@@ -51,6 +54,12 @@ type Options struct {
 	// RelevanceTimeout bounds ProposeReferences. Much shorter: one model call
 	// over a short prompt, plus a cached trend lookup.
 	RelevanceTimeout time.Duration
+	// ScriptTimeout bounds GenerateScript: up to three model calls, each
+	// writing a whole script.
+	ScriptTimeout time.Duration
+	// ValidateTimeout bounds ValidateScript. Short: no model runs, and it sits
+	// in the path of every inline edit at Gate C.
+	ValidateTimeout time.Duration
 }
 
 // New creates the client.
@@ -73,6 +82,12 @@ func New(opts Options) (*Engine, error) {
 	}
 	if opts.RelevanceTimeout <= 0 {
 		opts.RelevanceTimeout = 3 * time.Minute
+	}
+	if opts.ScriptTimeout <= 0 {
+		opts.ScriptTimeout = 6 * time.Minute
+	}
+	if opts.ValidateTimeout <= 0 {
+		opts.ValidateTimeout = 10 * time.Second
 	}
 
 	conn, err := grpc.NewClient(
@@ -109,9 +124,12 @@ func New(opts Options) (*Engine, error) {
 		health:           rewindv1.NewHealthServiceClient(conn),
 		research:         rewindv1.NewResearchServiceClient(conn),
 		relevance:        rewindv1.NewRelevanceServiceClient(conn),
+		script:           rewindv1.NewScriptServiceClient(conn),
 		healthTimeout:    opts.HealthTimeout,
 		researchTimeout:  opts.ResearchTimeout,
 		relevanceTimeout: opts.RelevanceTimeout,
+		scriptTimeout:    opts.ScriptTimeout,
+		validateTimeout:  opts.ValidateTimeout,
 	}, nil
 }
 

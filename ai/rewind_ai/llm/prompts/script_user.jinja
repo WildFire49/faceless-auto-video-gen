@@ -1,0 +1,33 @@
+Topic: {{ topic }}
+{% if angle %}
+The creator's angle, for TONE AND EMPHASIS ONLY -- it is not a source of facts:
+  "{{ angle }}"
+{% endif %}
+APPROVED FACTS -- the only things this script may state:
+{% for f in facts %}
+  {{ f.id }} [{{ f.label }}]{% if f.context %} ({{ f.context }}){% endif %}: {{ f.claim }}
+      quote: "{{ f.evidence }}"
+{% endfor %}
+{% if references %}
+MODERN COMPARISONS you may use (at most {{ max_references }}), each only in a
+beat that cites the fact in brackets:
+{% for r in references %}
+  {{ r.id }} [{{ r.linked_fact_id }}] {{ r.reference }}: "{{ r.comparison }}"
+{% endfor %}
+{% else %}
+No modern comparisons were chosen: this is a straight history video. Leave
+every "ref_ids" empty.
+{% endif %}
+BEAT PLAN -- exactly {{ slots|length }} beats, in this order:
+{% for s in slots %}
+  beat {{ loop.index }}: role "{{ s.role }}"{% if s.needs_year_stamp %}, needs a year_stamp{% endif %}{% if s.needs_fact %}, must cite a fact{% endif %}
+      {{ s.brief }}
+{% endfor %}
+Also write {{ title_options }} title options (no number that is not in a
+fact), a 1-2 sentence description, and 3-5 hashtags.
+{% if feedback %}
+YOUR PREVIOUS ATTEMPT BROKE THESE RULES. Fix every one:
+{% for v in feedback %}
+  - {% if v.beat %}beat {{ v.beat }}: {% endif %}{{ v.message }}
+{% endfor %}
+{% endif %}

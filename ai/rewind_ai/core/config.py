@@ -92,6 +92,32 @@ class RelevanceSettings:
 
 
 @dataclass(frozen=True, slots=True)
+class ScriptSettings:
+    """The ``script:`` block of ``config/channel.yaml``, plus the beat limits
+    from ``limits:`` -- one place a human tunes each number."""
+
+    #: Beats per video. Fixed at 9 (45 seconds) by decision at M4 kickoff.
+    beats: int = 9
+    #: Generate-and-validate rounds before handing the best attempt to Gate C.
+    max_attempts: int = 3
+    #: Within each attempt, passes that rewrite only the broken beats.
+    max_repairs: int = 3
+    #: Warmer than extraction: this is writing, and the rules -- not a cold
+    #: model -- are what keep it honest.
+    temperature: float = 0.7
+    #: Repairs are edits to an instruction, so they run cold.
+    repair_temperature: float = 0.2
+    #: Content words the last beat must share with the first, so it loops.
+    loop_min_shared_words: int = 2
+    #: How many title options to ask for.
+    title_options: int = 3
+    #: Words for a beat's punch; the fact line gets the rest of the limit.
+    punch_words: int = 5
+    max_words_per_beat: int = 14
+    max_sfx_per_beat: int = 1
+
+
+@dataclass(frozen=True, slots=True)
 class ContentSettings:
     """The ``content:`` block of ``config/channel.yaml``.
 
@@ -112,6 +138,7 @@ class Settings:
     research: ResearchSettings = field(default_factory=ResearchSettings)
     content: ContentSettings = field(default_factory=ContentSettings)
     relevance: RelevanceSettings = field(default_factory=RelevanceSettings)
+    script: ScriptSettings = field(default_factory=ScriptSettings)
 
 
 def find_config_dir(start: Path | None = None) -> Path:
@@ -161,7 +188,32 @@ def load(config_dir: Path | None = None) -> Settings:
         research=_research_settings(channel),
         content=_content_settings(channel),
         relevance=_relevance_settings(channel),
+        script=_script_settings(channel),
     )
+
+
+def _script_settings(channel: dict[str, Any]) -> ScriptSettings:
+    raw = _mapping(channel.get("script"))
+    limits = _mapping(channel.get("limits"))
+    d = ScriptSettings()
+    settings = ScriptSettings(
+        beats=int(raw.get("beats", d.beats)),
+        max_attempts=int(raw.get("max_attempts", d.max_attempts)),
+        max_repairs=int(raw.get("max_repairs", d.max_repairs)),
+        temperature=float(raw.get("temperature", d.temperature)),
+        repair_temperature=float(raw.get("repair_temperature", d.repair_temperature)),
+        loop_min_shared_words=int(raw.get("loop_min_shared_words", d.loop_min_shared_words)),
+        title_options=int(raw.get("title_options", d.title_options)),
+        punch_words=int(raw.get("punch_words", d.punch_words)),
+        max_words_per_beat=int(limits.get("max_words_per_beat", d.max_words_per_beat)),
+        max_sfx_per_beat=int(limits.get("max_sfx_per_beat", d.max_sfx_per_beat)),
+    )
+    # A zero here would silently disable a rule rather than tighten it.
+    if min(settings.beats, settings.max_attempts, settings.max_words_per_beat) < 1:
+        raise ConfigError(
+            "script.beats, script.max_attempts and limits.max_words_per_beat must be >= 1"
+        )
+    return settings
 
 
 def _relevance_settings(channel: dict[str, Any]) -> RelevanceSettings:
@@ -177,6 +229,11 @@ def _relevance_settings(channel: dict[str, Any]) -> RelevanceSettings:
         max_proposals=int(raw.get("max_proposals", defaults.max_proposals)),
         geo=str(raw.get("geo", defaults.geo)),
     )
+
+
+def _mapping(value: Any) -> dict[str, Any]:
+    """A YAML block, or an empty one if it is missing or not a mapping."""
+    return value if isinstance(value, dict) else {}
 
 
 def _content_settings(channel: dict[str, Any]) -> ContentSettings:

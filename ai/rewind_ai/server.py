@@ -23,7 +23,7 @@ from typing import Any
 
 import grpc
 
-from rewind.v1 import health_pb2_grpc, relevance_pb2_grpc, research_pb2_grpc
+from rewind.v1 import health_pb2_grpc, relevance_pb2_grpc, research_pb2_grpc, script_pb2_grpc
 from rewind_ai.core import config, container
 from rewind_ai.core.logging import configure, get_logger
 
@@ -59,6 +59,7 @@ def build_server(settings: config.Settings) -> tuple[grpc.Server, str]:
     from rewind_ai.handlers.health import HealthHandler
     from rewind_ai.handlers.relevance import RelevanceHandler
     from rewind_ai.handlers.research import ResearchHandler
+    from rewind_ai.handlers.script import ScriptHandler
 
     # A table rather than a run of registration calls, so that "which services
     # does this worker serve?" has ONE answer -- one that is logged at startup
@@ -82,6 +83,10 @@ def build_server(settings: config.Settings) -> tuple[grpc.Server, str]:
         "RelevanceService": (
             relevance_pb2_grpc.add_RelevanceServiceServicer_to_server,
             RelevanceHandler(deps.relevance, deps.trends),
+        ),
+        "ScriptService": (
+            script_pb2_grpc.add_ScriptServiceServicer_to_server,
+            ScriptHandler(deps.script),
         ),
     }
     for add_to_server, handler in served.values():

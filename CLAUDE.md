@@ -120,8 +120,42 @@ interface it implements.
   in page or component code. Every animation respects `prefers-reduced-motion`.
 
 ## Current milestone
-M3 — Relevance & Gate B: **COMPLETE**, awaiting review. Do not start M4 without an explicit
-"approved, start M4" from the user.
+M4 — Script & Gate C: **COMPLETE**, awaiting review. Do not start M5 without an explicit
+"approved, start M5" from the user.
+
+### Invariant M4 established — do not weaken it
+**Every number in a beat comes from an approved fact THAT BEAT cites** — spoken, on screen,
+in the year stamp — checked in code (`ai/rewind_ai/script/evidence_rules.py`), not by the
+model's self-report. Numbers are DIGITS in the script so they can be checked at all. The
+rules live ONLY in the worker; Go calls `ValidateScript` after every Gate C edit and refuses
+the edit if it cannot be checked, so the gate can never open on an unchecked script.
+
+What the model is NOT trusted with (`script/normalise.py`): the year stamp is the cited
+fact's own label, and a mentioned comparison is declared only when its fact is cited.
+
+**Revised acceptance (by decision):** qwen3:8b cannot reliably write a fully valid script
+(best: ~3 violations — long lines, a misplaced comparison), so the reviewer finishes it at
+Gate C. The E2E proves every problem is shown, fixable by an edit, and re-checked.
+
+**Known gap, found on the Gate C page:** the number check compares DIGITS, not the era
+beside them. A beat saying "3200" for a fact about "3200 BC" passes — and reads as a
+different year. Close this before voice (M5) speaks the dates.
+
+### Things the M4 E2E run caught that unit tests did not
+- **models cannot count words; they can write two short parts.** 23–31-word beats against a
+  14-word limit became 15–18 once each beat was a fact line (≤9) and a punch (≤5).
+- **regenerating everything to fix one line breaks the lines that were fine.** Beat-level
+  REPAIR with every other beat locked converges; full rewrites lost year stamps and invented
+  numbers. Repairs are an edit, so they run at a cooler temperature.
+- **compare a draft only after repairing it.** A fresh draft with more violations was
+  discarded on arrival while repairs kept patching the old, stuck script.
+- **examples in a prompt get copied verbatim.** "The next one almost set houses on fire" —
+  an example in a beat brief — turned up as a claim in a script about iron. Briefs say what,
+  not how.
+- **`attempts` must count what was made, not which was kept.**
+- **an id generator capped at 20 per topic stops working on the 21st video.**
+- **a rule the reviewer cannot satisfy by hand locks the gate forever.** A comparison in the
+  wrong beat could not be removed at Gate C until `UpdateBeat` carried `ref_ids`.
 
 ### Invariants from the pre-M4 review — do not weaken them
 Found by looking at the dashboard in a browser, which no test had ever done.

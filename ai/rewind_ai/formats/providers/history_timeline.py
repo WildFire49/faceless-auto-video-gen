@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 from rewind_ai.core.registry import register
-from rewind_ai.formats.base import GateRules, RawItem
+from rewind_ai.formats.base import BeatSlot, GateRules, RawItem, ScriptShape, opening_body_close
 from rewind_ai.formats.timeline_dates import PRESENT_YEAR, label_years
 
 #: The oldest year this format can use. Generous: the earliest stone tools are
@@ -156,6 +156,55 @@ class HistoryTimeline:
     def gate_rules(self) -> GateRules:
         # SPEC.md 5.2: at least 8 facts spanning at least 4 eras.
         return GateRules(min_items=8, min_groups=4, group_noun="era")
+
+    def script_shape(self, beats: int) -> ScriptShape:
+        """The "Rewind" formula (SPEC.md 5.4)."""
+        return opening_body_close(
+            beats,
+            opening=BeatSlot(
+                role="hook",
+                brief=(
+                    "The oldest or most surprising version, shown mid-action, then "
+                    "'Let's rewind.' Cite the fact it states."
+                ),
+                needs_fact=True,
+                needs_year_stamp=True,
+            ),
+            body=BeatSlot(
+                role="era",
+                brief=(
+                    "One era: the year, the fact (setup), then a twist, joke or modern "
+                    "comparison (punch). Go forward in time from beat to beat."
+                ),
+                needs_fact=True,
+                needs_year_stamp=True,
+            ),
+            # No example lines in these briefs. A live run copied the old
+            # rehook example ("the next one almost set houses on fire")
+            # verbatim -- a claim with no fact behind it, and no number for
+            # the validator to catch. Examples get copied; say what, not how.
+            rehook=BeatSlot(
+                role="rehook",
+                brief=(
+                    "A teaser question or cliffhanger that makes the viewer stay for "
+                    "the next beat. States NOTHING as true: no fact, no claim."
+                ),
+                needs_fact=False,
+                needs_year_stamp=False,
+            ),
+            # Must cite a fact: "the modern version" is a claim like any other.
+            # A live run closed on "iron is everywhere, from skyscrapers to
+            # smartphones" citing nothing -- the model was its only source.
+            close=BeatSlot(
+                role="today",
+                brief=(
+                    "The most modern approved fact, then a last line that reuses the "
+                    "hook's key words so the video loops seamlessly."
+                ),
+                needs_fact=True,
+                needs_year_stamp=False,
+            ),
+        )
 
 
 _SYSTEM = """\

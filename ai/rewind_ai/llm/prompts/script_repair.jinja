@@ -1,0 +1,47 @@
+Some beats of this script break the rules. REWRITE ONLY the beats listed
+under FIX THESE BEATS. Every other beat is final and must not change.
+
+THE WHOLE SCRIPT, for context:
+{% for b in beats %}
+  beat {{ b.n }} ({{ b.role }}): {{ b.voice }}
+{% endfor %}
+
+FIX THESE BEATS:
+{% for item in broken %}
+
+beat {{ item.beat.n }} ({{ item.beat.role }}) -- now {{ item.words }} words; rewrite as a fact line of at most {{ fact_words }} words and a punch of at most {{ punch_words }}:
+  now:            "{{ item.beat.voice }}"
+  year_stamp:     "{{ item.beat.year_stamp }}"
+  on_screen_text: "{{ item.beat.on_screen_text }}"
+  ref_ids:        {{ item.beat.ref_ids }}
+  what is wrong:
+{% for v in item.violations %}
+    - {{ v.message }}
+{% endfor %}
+{% if item.facts %}
+  the facts it cites -- the ONLY source for any number in this beat:
+{% for f in item.facts %}
+    {{ f.id }} [{{ f.label }}]: {{ f.claim }}
+        quote: "{{ f.evidence }}"
+{% endfor %}
+{% endif %}
+{% if item.references %}
+  the ONLY comparisons this beat may mention (list the id in ref_ids if you do):
+{% for r in item.references %}
+    {{ r.id }} {{ r.reference }}
+{% endfor %}
+{% else %}
+  this beat may mention NO modern comparison or brand at all.
+{% endif %}
+{% if item.echo_words %}
+  reuse at least {{ loop_words }} of these words from beat 1, so the video loops: {{ item.echo_words|join(", ") }}
+{% endif %}
+{% endfor %}
+
+Keep each beat's meaning: say LESS, not something else. Numbers as digits,
+only ones in that beat's cited facts. The last beat must reuse key words from
+beat 1 so the video loops.
+
+Return JSON: {"beats": [...]} with one object per beat listed above, each with
+"n", "fact_line" and "punch", plus "on_screen_text" and "ref_ids" if they
+change. The fact line copies the fact's date exactly as its label writes it.

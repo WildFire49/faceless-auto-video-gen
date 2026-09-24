@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import Any
 
 from rewind_ai.core.registry import register
-from rewind_ai.formats.base import GateRules, RawItem
+from rewind_ai.formats.base import BeatSlot, GateRules, RawItem, ScriptShape, opening_body_close
 
 #: Ordering is by how surprising the correction is, 1 (mild) to 5 (jaw-dropping).
 #: A bounded scale rather than an open number: the script writer builds to a
@@ -120,6 +120,46 @@ class MythVsFact:
         # Fewer items than a timeline: a myth needs setup and payoff, so each
         # takes more screen time. Three distinct domains keeps it varied.
         return GateRules(min_items=5, min_groups=3, group_noun="domain")
+
+    def script_shape(self, beats: int) -> ScriptShape:
+        """Myth, then correction, building to the most surprising one.
+
+        No year stamps: nothing here is chronological.
+        """
+        return opening_body_close(
+            beats,
+            opening=BeatSlot(
+                role="hook",
+                brief="State the most widely believed myth as if it were true. No correction yet.",
+                needs_fact=False,
+                needs_year_stamp=False,
+            ),
+            body=BeatSlot(
+                role="myth",
+                brief=(
+                    "A myth people believe (setup), then what the sources actually say "
+                    "(punch). Cite the fact the correction comes from. Build toward the "
+                    "most surprising correction."
+                ),
+                needs_fact=True,
+                needs_year_stamp=False,
+            ),
+            rehook=BeatSlot(
+                role="rehook",
+                brief="An open loop: the biggest myth is still to come. No new fact.",
+                needs_fact=False,
+                needs_year_stamp=False,
+            ),
+            close=BeatSlot(
+                role="verdict",
+                brief=(
+                    "Settle the opening myth with the fact that corrects it, reusing the "
+                    "hook's key words so it loops."
+                ),
+                needs_fact=True,
+                needs_year_stamp=False,
+            ),
+        )
 
 
 _SYSTEM = """\

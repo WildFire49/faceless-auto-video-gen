@@ -135,6 +135,12 @@ _CLAIM_PATTERNS: tuple[re.Pattern[str], ...] = (
 #: Words that mark a line as a likeness rather than an assertion. Their
 #: presence is not a licence, but their ABSENCE alongside a claim verb is a
 #: strong signal.
+#: Shared with the script validator (script/evidence_rules.py), which asks a
+#: narrower question -- does a claim verb follow the BRAND's name -- because a
+#: script beat mixes approved facts ("Bessemer invented a process") with the
+#: joke. One list of claim verbs, so the two checks cannot drift apart.
+CLAIM_PATTERNS = _CLAIM_PATTERNS
+
 _LIKENESS_MARKERS = (
     "basically",
     "like",

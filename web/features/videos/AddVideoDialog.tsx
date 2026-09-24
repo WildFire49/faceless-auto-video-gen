@@ -92,9 +92,9 @@ export function AddVideoDialog({ open, onClose }: { open: boolean; onClose: () =
           </TextField>
 
           <TextField
-            label="Notes"
-            placeholder="compare to Birkenstocks, Crocs"
-            helperText="Optional. Notes for yourself, and hints for the research step."
+            label="Angle"
+            placeholder="focus on how ugly they were"
+            helperText="Optional. Steers the script's tone and emphasis. It is never a source of facts — research ignores it."
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             fullWidth

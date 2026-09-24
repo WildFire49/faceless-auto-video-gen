@@ -5,7 +5,6 @@
 
 channel_name: "Rewind" # decide: final name
 beat_seconds: 5.0
-target_beats: [9, 12] # 45-60s videos
 aspect: "9:16"
 resolution: [1080, 1920]
 
@@ -42,6 +41,32 @@ relevance:
 limits:
   max_sfx_per_beat: 1
   max_words_per_beat: 14
+
+script:
+  # 45 seconds at 5s per beat. Fixed by decision at M4 kickoff (SPEC.md 12).
+  beats: 9
+  # Generate -> validate -> regenerate with the broken rules fed back. After
+  # this many, the best attempt goes to Gate C with its violations shown, so
+  # you can fix it by hand; Gate C cannot be approved until none remain.
+  max_attempts: 3
+  # Within each attempt, how many times to rewrite ONLY the beats that break
+  # a rule, every other beat locked. Cheap (seconds, not a minute) and far
+  # more reliable than a full rewrite for a line that is 2 words too long.
+  max_repairs: 3
+  # Warmer than fact extraction (llm.temperature): this is writing. The
+  # validator, not a cold model, is what keeps every number true.
+  temperature: 0.7
+  # Repairs rewrite a broken beat to an instruction ("at most 9 words, keep
+  # this date"). That is editing, not writing, so it runs cold.
+  repair_temperature: 0.2
+  # The last beat must share this many content words with the first, so the
+  # video loops (SPEC.md 5.4).
+  loop_min_shared_words: 2
+  title_options: 3
+  # Each beat is written as a fact line and a punch. Models cannot count to
+  # limits.max_words_per_beat, but can write two short parts; the fact line
+  # gets whatever the punch leaves.
+  punch_words: 5
 
 llm:
   provider: ollama # swap: openai_compat

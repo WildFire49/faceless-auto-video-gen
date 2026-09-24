@@ -148,21 +148,16 @@ so the architecture cannot erode quietly.
 
 ## Current status
 
-**M3 — Relevance & Gate B: complete.** The pipeline fetches Wikipedia, asks a local model to
-extract dated events, throws away anything it cannot trace back to the source, and presents what
-survives at Gate A. It then proposes modern comparisons for the facts you approved — and refuses
-to let more than three of them into one video.
+**M4 — Script & Gate C: complete.** The pipeline researches a topic, verifies every fact against
+its source, proposes modern comparisons, and now writes a 9-beat script from what you approved.
+Every number in every beat must come from a fact that beat cites; the writer repairs the beats
+that break a rule, and you finish the rest at Gate C — every edit re-checked, the gate shut until
+nothing is broken.
 
 ```bash
-rewind add "iron"                 # queue a topic
-rewind queue --needs-review       # what is waiting for you
-rewind approve iron A --note "checked every source"
-rewind reject iron C --back-to researching --note "the 1882 date is wrong"
-rewind log iron                   # the human decision history
+task dev                          # all three services + Ollama
+task e2e                          # the full proof: research -> Gate A -> B -> C, with screenshots
 ```
-
-Gates cannot be skipped, structurally: gate-crossing transitions live in a different table from
-automatic ones, so a pipeline step cannot perform one. See `api/internal/domain/state.go`.
 
 ### The rule the whole project rests on
 
@@ -198,7 +193,7 @@ laugh. Every surviving comparison must attach to a fact *you* approved at Gate A
 The cap is **three per video** — the point at which a history video starts sounding like an
 advert. It is enforced in the domain layer, so no amount of clicking can get a fourth past it.
 
-Next up is **M4**: the script writer and Gate C.
+Next up is **M5**: voice, and Gate D.
 See [SPEC.md §9](SPEC.md#9-build-milestones-one-claude-code-session-each).
 
 ---

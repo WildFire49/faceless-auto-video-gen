@@ -46,6 +46,8 @@ from rewind.v1 import (
     references_pb2,
     relevance_pb2,
     research_pb2,
+    script_pb2,
+    scripts_pb2,
     video_pb2,
 )
 from rewind_ai.core.config import AISettings, PathSettings, Settings
@@ -61,6 +63,8 @@ CONTRACT_MODULES = (
     references_pb2,
     relevance_pb2,
     research_pb2,
+    script_pb2,
+    scripts_pb2,
     video_pb2,
 )
 
@@ -73,6 +77,7 @@ GO_SERVED = frozenset(
         "rewind.v1.VideoService",
         "rewind.v1.FactsService",
         "rewind.v1.ReferencesService",
+        "rewind.v1.ScriptsService",
     }
 )
 

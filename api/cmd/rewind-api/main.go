@@ -24,7 +24,6 @@ import (
 	"github.com/WildFire49/faceless-auto-video-gen/api/gen/rewind/v1/rewindv1connect"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/adapter/aifake"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/adapter/aigrpc"
-	"github.com/WildFire49/faceless-auto-video-gen/api/internal/domain"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/platform/buildinfo"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/platform/clock"
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/platform/config"
@@ -79,7 +78,7 @@ func run() error {
 	}
 
 	// ---- the AI engine (the only choice this file makes) -------------------
-	var ai domain.AIEngine
+	var ai wiring.Worker
 	if *fakeAI {
 		ai = aifake.NewHealthy()
 		log.Warn("using the FAKE AI worker; no Python process will be contacted")
@@ -90,6 +89,8 @@ func run() error {
 			HealthTimeout:    cfg.Timeout("health", 5*time.Second),
 			ResearchTimeout:  cfg.Timeout("research", 5*time.Minute),
 			RelevanceTimeout: cfg.Timeout("relevance", 3*time.Minute),
+			ScriptTimeout:    cfg.Timeout("script", 10*time.Minute),
+			ValidateTimeout:  cfg.Timeout("validate", 10*time.Second),
 		})
 		if err != nil {
 			return fmt.Errorf("creating AI client: %w", err)
@@ -139,6 +140,10 @@ func run() error {
 	refsPath, refsHandler := rewindv1connect.NewReferencesServiceHandler(
 		connectrpc.NewReferencesHandler(app.Refs))
 	mux.Handle(refsPath, refsHandler)
+
+	scriptsPath, scriptsHandler := rewindv1connect.NewScriptsServiceHandler(
+		connectrpc.NewScriptsHandler(app.Scripts))
+	mux.Handle(scriptsPath, scriptsHandler)
 
 	// A plain liveness endpoint, so `curl` and container probes do not need to
 	// speak Connect to find out whether the process is up.

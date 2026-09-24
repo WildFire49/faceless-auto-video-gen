@@ -35,8 +35,17 @@ type App struct {
 	Gates    *service.GateService
 	Facts    *service.FactsService
 	Refs     *service.ReferencesService
+	Scripts  *service.ScriptService
 	Runner   *pipeline.Runner
 	Registry *pipeline.Registry
+}
+
+// Worker is everything the pipeline asks of the AI worker. Two ports rather
+// than one wide interface (SPEC.md 14.4); the real gRPC engine and the fake
+// both implement both.
+type Worker interface {
+	domain.AIEngine
+	domain.ScriptWriter
 }
 
 // Close releases everything the app holds.
@@ -51,7 +60,7 @@ func Build(
 	cfg config.Services,
 	channel config.Channel,
 	configDir string,
-	ai domain.AIEngine,
+	ai Worker,
 	log *slog.Logger,
 ) (*App, error) {
 	// Paths in config are relative to the repository root, the parent of
@@ -69,11 +78,13 @@ func Build(
 	reviewLog := reviewmirror.New(sqlite.NewReviewLog(db), projectsDir, log)
 	factStore := factstore.New(projectsDir)
 	refStore := factstore.NewRefStore(projectsDir)
+	scriptStore := factstore.NewScriptStore(projectsDir)
 
 	clk := clock.New()
 
 	factsService := service.NewFactsService(factStore, videoRepo, reviewLog, clk)
 	refsService := service.NewReferencesService(refStore, factStore, videoRepo, reviewLog, clk)
+	scriptService := service.NewScriptService(scriptStore, factStore, refStore, videoRepo, ai, reviewLog, clk)
 
 	// Gate A cannot be approved until the fact sheet meets its bar. The rule
 	// itself lives in the domain; this just connects it to the gate.
@@ -106,6 +117,19 @@ func Build(
 			}
 			return nil
 		},
+		domain.GateC: func(ctx context.Context, videoID string) error {
+			view, err := scriptService.GetScript(ctx, videoID)
+			if err != nil {
+				return err
+			}
+			if !view.Exists {
+				return fmt.Errorf("%w: no script yet — run the script step first", domain.ErrValidation)
+			}
+			if !view.Readiness.CanApprove {
+				return fmt.Errorf("%w: %s", domain.ErrValidation, view.Readiness.Blocker)
+			}
+			return nil
+		},
 	}
 
 	videoService := service.NewVideoService(videoRepo, reviewLog, db, clk, idgen.New())
@@ -117,6 +141,7 @@ func Build(
 	// knows and Go does not need to.
 	registry.MustRegister(steps.NewResearch(ai, channel.Research.MinFacts))
 	registry.MustRegister(steps.NewRelevance(ai, factStore, channel.Relevance.MaxProposals))
+	registry.MustRegister(steps.NewScripting(ai, factStore, refStore))
 
 	runner := pipeline.NewRunner(registry, videoRepo, jobRepo, db, clk, newJobID, log)
 	videoService.WithPipeline(jobRepo, runner)
@@ -127,6 +152,7 @@ func Build(
 		Gates:    gateService,
 		Facts:    factsService,
 		Refs:     refsService,
+		Scripts:  scriptService,
 		Runner:   runner,
 		Registry: registry,
 	}, nil

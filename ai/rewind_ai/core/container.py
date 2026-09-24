@@ -10,7 +10,7 @@ and what makes SPEC.md 14.2's one-file-one-line-one-value promise real.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from rewind_ai.core import registry
 from rewind_ai.core.config import Settings
@@ -22,6 +22,7 @@ from rewind_ai.health.base import Probe
 from rewind_ai.health.service import HealthChecker
 from rewind_ai.llm import factory as llm_factory
 from rewind_ai.llm.base import LLM, LLMConfig
+from rewind_ai.llm.templates import Templates
 from rewind_ai.relevance import sources as trend_source_package
 from rewind_ai.relevance.bank import TrendCache, load_bank
 from rewind_ai.relevance.base import TrendSource
@@ -29,6 +30,8 @@ from rewind_ai.relevance.service import RelevanceConfig, RelevanceService
 from rewind_ai.research import sources as research_source_package
 from rewind_ai.research.base import SourceFetcher
 from rewind_ai.research.service import ResearchConfig, ResearchService
+from rewind_ai.script.context import Limits
+from rewind_ai.script.service import ScriptConfig, ScriptService
 
 log = get_logger(__name__)
 
@@ -44,6 +47,7 @@ class Container:
     health: HealthChecker
     research: ResearchService
     relevance: RelevanceService
+    script: ScriptService
     trends: TrendCache
     llm: LLM
     content_format: ContentFormat
@@ -67,6 +71,13 @@ def build(settings: Settings) -> Container:
         base_url=settings.llm.base_url,
     )
     llm = llm_factory.build(llm_config)
+    # The same model, warmer: extraction wants a cold model that copies,
+    # script writing wants one that writes. The validator, not the
+    # temperature, is what keeps every number in a script true.
+    script_llm = llm_factory.build(replace(llm_config, temperature=settings.script.temperature))
+    repair_llm = llm_factory.build(
+        replace(llm_config, temperature=settings.script.repair_temperature)
+    )
 
     content_format = format_factory.build(settings.content.format)
     fetchers = _build_fetchers(settings)
@@ -117,7 +128,44 @@ def build(settings: Settings) -> Container:
             ),
             projects_dir=settings.paths.projects,
         ),
+        script=ScriptService(
+            llm=script_llm,
+            repair_llm=repair_llm,
+            content_format=content_format,
+            style_bible=_read_style_bible(settings),
+            config=ScriptConfig(
+                limits=Limits(
+                    beats=settings.script.beats,
+                    max_words_per_beat=settings.script.max_words_per_beat,
+                    max_sfx_per_beat=settings.script.max_sfx_per_beat,
+                    max_references=settings.relevance.max_selectable,
+                    loop_min_shared_words=settings.script.loop_min_shared_words,
+                ),
+                max_attempts=settings.script.max_attempts,
+                max_repairs=settings.script.max_repairs,
+                title_options=settings.script.title_options,
+                punch_words=settings.script.punch_words,
+            ),
+            templates=Templates(),
+            projects_dir=settings.paths.projects,
+        ),
     )
+
+
+def _read_style_bible(settings: Settings) -> str:
+    """config/style_bible.md -- the channel's voice (SPEC.md 6).
+
+    Read at startup rather than per script: restart the worker after editing
+    it. Missing is a warning, not a crash: the hard rules the validator
+    enforces are also in the system prompt.
+    """
+    path = settings.config_dir / "style_bible.md"
+    if not path.is_file():
+        log.warning(
+            "no style bible found; scripts will use the built-in rules only", path=str(path)
+        )
+        return ""
+    return path.read_text(encoding="utf-8")
 
 
 def _build_trend_sources(settings: Settings) -> list[TrendSource]:

@@ -198,6 +198,48 @@ def test_parse_item_rejects_empty_input(fmt: ContentFormat) -> None:
     assert fmt.parse_item({}) is None
 
 
+@pytest.mark.parametrize("fmt", ALL_FORMATS, ids=lambda f: f.name)
+@pytest.mark.parametrize("beats", [9, 12])
+def test_script_shape_is_one_slot_per_beat(fmt: ContentFormat, beats: int) -> None:
+    """The validator checks beat N against slot N; a mismatch would reject
+    every script the format ever produced."""
+    shape = fmt.script_shape(beats)
+    assert len(shape.slots) == beats
+    assert all(slot.role and slot.brief for slot in shape.slots)
+
+
+@pytest.mark.parametrize("fmt", ALL_FORMATS, ids=lambda f: f.name)
+def test_script_shape_has_exactly_one_rehook(fmt: ContentFormat) -> None:
+    """SPEC.md 5.4: 'no rehook beat' is a validation failure for every format."""
+    roles = [slot.role for slot in fmt.script_shape(9).slots]
+    assert roles.count("rehook") == 1
+
+
+@pytest.mark.parametrize("fmt", ALL_FORMATS, ids=lambda f: f.name)
+def test_script_shape_closing_beat_cites_a_fact(fmt: ContentFormat) -> None:
+    """The last line a viewer hears is a claim too. A live run closed on a
+    sweeping statement that cited nothing, so the model was its source."""
+    assert fmt.script_shape(9).slots[-1].needs_fact
+
+
+@pytest.mark.parametrize("fmt", ALL_FORMATS, ids=lambda f: f.name)
+def test_script_shape_briefs_carry_no_example_lines(fmt: ContentFormat) -> None:
+    """Models copy examples verbatim; a live run copied 'the next one almost
+    set houses on fire' into a script about iron. Briefs say what, not how."""
+    # "Let's rewind." is the channel's catchphrase and is MEANT to be said
+    # verbatim; what must not appear is an example line to imitate.
+    for slot in fmt.script_shape(9).slots:
+        assert "e.g." not in slot.brief and "for example" not in slot.brief.lower(), slot.role
+
+
+@pytest.mark.parametrize("fmt", ALL_FORMATS, ids=lambda f: f.name)
+def test_script_shape_body_beats_cite_facts(fmt: ContentFormat) -> None:
+    """A format whose body beats need no fact would let a script state things
+    with nothing to check its numbers against."""
+    body = fmt.script_shape(9).slots[1:-1]
+    assert any(slot.needs_fact for slot in body)
+
+
 # --------------------------------------------------------------- registry
 
 

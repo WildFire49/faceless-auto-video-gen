@@ -29,7 +29,12 @@ ai:
     research: 1200
     # One model call over a short prompt, plus a cached trend lookup.
     relevance: 180
-    script: 180
+    # Up to script.max_attempts (3) whole scripts from the model, each checked
+    # and fed back. 180s was the pre-M4 guess; one attempt alone can take a
+    # minute or more on an 8B model.
+    script: 600
+    # Re-checking a script after an inline edit at Gate C. No model runs.
+    validate: 10
     voice: 900
     visuals: 1800
     captions: 300

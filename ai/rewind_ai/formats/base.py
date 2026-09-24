@@ -44,6 +44,50 @@ class GateRules:
 
 
 @dataclass(frozen=True, slots=True)
+class BeatSlot:
+    """What one position in a script is for (SPEC.md 5.4)."""
+
+    #: Short stable name, written into script.json: "hook", "era", "rehook".
+    role: str
+    #: What the beat must do, in words the script writer is given.
+    brief: str
+    #: Must cite at least one approved fact. A beat that states something
+    #: without citing a fact cannot have its numbers checked.
+    needs_fact: bool
+    #: Must carry an on-screen date.
+    needs_year_stamp: bool
+
+
+@dataclass(frozen=True, slots=True)
+class ScriptShape:
+    """How a format lays out a script: one slot per beat, in order.
+
+    Owned by the format because the Rewind formula (era stops, year stamps)
+    presumes a timeline. What is NOT the format's to vary lives in
+    script/rules.py and applies to every shape: the word limit, grounded
+    numbers, at most three references, and the loop back to the opening.
+    """
+
+    slots: tuple[BeatSlot, ...]
+
+
+def opening_body_close(
+    beats: int, *, opening: BeatSlot, body: BeatSlot, rehook: BeatSlot, close: BeatSlot
+) -> ScriptShape:
+    """The shape most formats share: an opening, a body with a rehook at its
+    midpoint to hold attention, and a close that loops back to the opening.
+    """
+    if beats < 4:
+        raise ValueError(f"a script needs at least 4 beats for this shape, got {beats}")
+    middle = beats // 2  # 0-based index; beat 5 of 9
+    slots = [opening]
+    for index in range(1, beats - 1):
+        slots.append(rehook if index == middle else body)
+    slots.append(close)
+    return ScriptShape(slots=tuple(slots))
+
+
+@dataclass(frozen=True, slots=True)
 class RawItem:
     """One object as the model returned it, before any checking.
 
@@ -121,4 +165,8 @@ class ContentFormat(Protocol):
 
     def gate_rules(self) -> GateRules:
         """Thresholds for this format's first review gate."""
+        ...
+
+    def script_shape(self, beats: int) -> ScriptShape:
+        """What each of ``beats`` positions in the script is for."""
         ...

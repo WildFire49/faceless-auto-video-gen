@@ -143,6 +143,7 @@ export function gatesPassed(video: Video): number {
 export const GATE_PAGES: Partial<Record<Gate, string>> = {
   [Gate.A_FACTS]: 'facts',
   [Gate.B_REFERENCES]: 'references',
+  [Gate.C_SCRIPT]: 'script',
 };
 
 /**

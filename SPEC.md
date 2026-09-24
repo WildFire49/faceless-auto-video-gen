@@ -754,10 +754,33 @@ bottle/cup" returns Stanley/Hydro Flask; live-trend scan completes in < 60s and 
 highlighted green; hover a fact to see its source. Edit inline → re-validate → approve.
 Also pick the final title.
 
-**Acceptance:** produces valid scripts for iron, mouse, sandals on first or second try; validator
-catches injected errors in unit tests (wrong year, 20-word beat, missing loop).
+**Acceptance (revised at M4, by decision):** the writer delivers a 9-beat script with every
+broken rule shown and Gate C shut; a reviewer can fix every problem by editing at Gate C (each
+edit re-checked); Gate C opens only when none remain; every number in the final script is in a
+fact its beat cites. The validator catches injected errors (wrong year, 20-word beat, missing
+loop) in unit tests and live.
 
-**☐ APPROVE 5.4** — beat formula, word limit, validator rules
+*Why revised:* the original bar -- "valid scripts on the first or second try" -- was not met
+by qwen3:8b across six live runs. Its best attempts came within 3 violations (lines of 15-18
+words against 14, a comparison in the wrong beat), with every invented or rounded date caught.
+Rather than weaken the rules or add a larger model, the human finishes the script at Gate C.
+A larger model for scripts only remains the way to raise the bar later; the script writer
+already gets its own model instance, so that is one new config value, not a code change.
+
+**☑ APPROVED 5.4** — beat formula, word limit, validator rules, with these decisions (M4 kickoff):
+- **Always 9 beats** (45s), not 9–12; the count is `script.beats` in `config/channel.yaml`.
+- **Numbers are digits in the script** ("9,000 years", "1709") so the validator can check each
+  one against the approved facts exactly. Turning them into speech is Module 5's job. (The
+  example above spells them out; that predates this decision.)
+- **Every number in a beat must come from an approved fact that beat cites** in `fact_ids` —
+  stricter than "appears somewhere in the fact sheet", and checked in code, not by LLM
+  self-check.
+- **The beat shape belongs to the content format.** The Rewind formula above is the
+  `history_timeline` shape; other formats declare their own. Universal rules (word limit,
+  grounded numbers, ≤ 3 references, loop echo, ≤ 1 SFX) apply to every format.
+- **An optional "angle"** typed with the topic (the video's `notes`) steers the script's tone
+  and emphasis only. It never reaches research, so it can never become a source of facts.
+- `analytics_lessons.md` is empty until Module 11 exists.
 
 ---
 
@@ -916,7 +939,7 @@ ridiculous, speaks like a friend — not a teacher. Deadpan, never shouty.
 - No politics, no real private individuals, no fake quotes from real people.
 - Every script ends by echoing its opening line (loop).
 
-**☐ APPROVE Section 6** — persona & humor rules (edit freely; this sets the channel's voice)
+**☑ APPROVED Section 6** — persona & humor rules, as written. Lives in `config/style_bible.md`; edit freely.
 
 ---
 
@@ -1109,7 +1132,7 @@ stubbed LLM, asserts the browser API returns the right status.
 | Voice | Chatterbox (own clone) / Kokoro preset | ☐ |
 | Art style | Painterly documentary / vintage print / 3D diorama | ☐ |
 | LLM size | qwen2.5:14b / 7b (smaller GPU) | ☐ |
-| Video length | 45s (9 beats) / 60s (12 beats) | ☐ |
+| Video length | 45s (9 beats) / 60s (12 beats) | ☑ **45s, always 9 beats** (`config/channel.yaml: script.beats`) |
 | Research sources v1 | Wikipedia + your URLs / + SearXNG web search | ☐ |
 | First 3 topics | iron, mouse, sandals / your picks | ☐ |
 | Your GPU | model + VRAM | ☑ **NVIDIA RTX 4060 Laptop, 8188 MB VRAM** (measured by the M0 GPU probe) — meets the ≥8 GB target, so no CPU fallback is needed; still worth choosing `qwen2.5:7b` over `14b` |

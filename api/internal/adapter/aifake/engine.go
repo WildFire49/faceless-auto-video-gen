@@ -45,6 +45,9 @@ type Engine struct {
 	// ReferenceCalls records every relevance request, so a test can assert
 	// which facts were forwarded.
 	ReferenceCalls []domain.ReferencesRequest
+
+	// ScriptFake configures GenerateScript and ValidateScript.
+	ScriptFake
 }
 
 // NewHealthy returns a fake worker that reports itself fully operational.

@@ -10,9 +10,13 @@ import (
 	"github.com/WildFire49/faceless-auto-video-gen/api/internal/domain"
 )
 
-// maxAttempts bounds the suffix search. Twenty "iron" episodes is already
-// implausible; failing loudly beats looping forever.
-const maxAttempts = 20
+// maxAttempts bounds the suffix search, so it fails loudly rather than
+// looping forever. It was 20, on the theory that twenty episodes of one topic
+// was implausible; the M4 end-to-end run hit it with its twenty-first "iron"
+// video. Remakes, send-backs and test runs all create videos, so the bound is
+// set where only a runaway loop could reach it. Each step is one indexed
+// lookup, so even the worst case is quick.
+const maxAttempts = 10_000
 
 // Slug generates ids by slugifying the topic and adding a numeric suffix on
 // collision: "iron", then "iron-2", "iron-3".

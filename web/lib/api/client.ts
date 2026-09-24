@@ -16,6 +16,7 @@ import { createConnectTransport } from '@connectrpc/connect-web';
 import { RewindService } from '@/lib/gen/rewind/v1/api_pb';
 import { FactsService } from '@/lib/gen/rewind/v1/facts_pb';
 import { ReferencesService } from '@/lib/gen/rewind/v1/references_pb';
+import { ScriptsService } from '@/lib/gen/rewind/v1/scripts_pb';
 import { VideoService } from '@/lib/gen/rewind/v1/video_pb';
 
 /**
@@ -49,5 +50,8 @@ export const referencesClient: Client<typeof ReferencesService> = createClient(
   ReferencesService,
   transport,
 );
+
+/** Gate C: the beat script. */
+export const scriptsClient: Client<typeof ScriptsService> = createClient(ScriptsService, transport);
 
 export { baseUrl as apiBaseUrl };

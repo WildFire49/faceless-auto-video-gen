@@ -1,0 +1,125 @@
+syntax = "proto3";
+
+package rewind.v1;
+
+import "rewind/v1/common.proto";
+
+// ScriptService turns approved facts and approved comparisons into a beat
+// script, and checks scripts against the rules (SPEC.md 5.4).
+//
+// THE RULE THIS SERVICE MUST NOT BREAK: every number in a beat -- spoken, on
+// screen, or in its year stamp -- comes from an approved fact that beat cites
+// in fact_ids. The script is written by a model; the facts were checked by a
+// human. Nothing the model writes may add a number the human did not see.
+service ScriptService {
+  // GenerateScript writes script.json: generate, validate, and regenerate
+  // with the violations fed back, up to the configured attempts.
+  rpc GenerateScript(GenerateScriptRequest) returns (stream GenerateScriptResponse);
+
+  // ValidateScript checks a script and returns every violation. Stateless and
+  // model-free, so Go can call it after each inline edit at Gate C: there is
+  // exactly one implementation of the rules, and it lives here.
+  rpc ValidateScript(ValidateScriptRequest) returns (ValidateScriptResponse);
+}
+
+// ScriptFact is an approved fact as the script writer sees it. Unlike the
+// relevance engine, the script DOES get the evidence: a beat may use a number
+// that is in the quote even if the one-line claim left it out.
+message ScriptFact {
+  string id = 1;
+  string label = 2;
+  string claim = 3;
+  string evidence = 4;
+  string context = 5;
+  string source_url = 6;
+  string group = 7;
+}
+
+// ScriptReference is a comparison selected at Gate B.
+message ScriptReference {
+  string id = 1;
+  string reference = 2;
+  string comparison = 3;
+  string linked_fact_id = 4;
+}
+
+message GenerateScriptRequest {
+  string video_id = 1;
+  string topic = 2;
+  // The optional angle typed with the topic: "focus on how ugly they were".
+  // Steers tone and emphasis ONLY. It is never a source of facts.
+  string angle = 3;
+  // Approved facts only.
+  repeated ScriptFact facts = 4;
+  // Selected comparisons only. May be empty: a straight history video.
+  repeated ScriptReference references = 5;
+}
+
+message GenerateScriptResponse {
+  oneof event {
+    Progress progress = 1;
+    Script result = 2;
+    Failure failure = 3;
+  }
+}
+
+// Beat is one ~5 second unit of the video (SPEC.md 5.4).
+message Beat {
+  int32 n = 1;
+  // Declared by the content format: "hook", "era", "rehook", "today" for a
+  // timeline. A string rather than an enum because formats differ.
+  string role = 2;
+  // The date shown on screen, e.g. "~7000 BC". Empty for beats without one.
+  string year_stamp = 3;
+  // What the narrator says. Numbers are DIGITS ("9,000 years"), so they can
+  // be checked; turning them into speech is Module 5's job.
+  string voice = 4;
+  string on_screen_text = 5;
+  repeated string visual_prompts = 6;
+  string sfx = 7;
+  string motion = 8;
+  repeated string emphasis_words = 9;
+  // The approved facts this beat states. Every number in the beat must come
+  // from one of these.
+  repeated string fact_ids = 10;
+  // The selected comparisons this beat uses.
+  repeated string ref_ids = 11;
+  bool is_punch = 12;
+}
+
+// Violation is one broken rule. `rule` is a stable code the dashboard and
+// tests can key on; `message` is for the human.
+message Violation {
+  string rule = 1;
+  // The beat it is in, 1-based; 0 for the script as a whole.
+  int32 beat = 2;
+  string message = 3;
+}
+
+message Script {
+  repeated string title_options = 1;
+  // Picked by the human at Gate C. Empty until then.
+  string chosen_title = 2;
+  string description = 3;
+  repeated string hashtags = 4;
+  repeated Beat beats = 5;
+  // Source URLs of the facts used, built from the facts -- never written by
+  // the model.
+  repeated string sources = 6;
+
+  string script_json_path = 7;
+  // How many generations it took to pass validation.
+  int32 attempts = 8;
+  // What is still wrong. Empty when the script is valid.
+  repeated Violation violations = 9;
+}
+
+message ValidateScriptRequest {
+  Script script = 1;
+  repeated ScriptFact facts = 2;
+  repeated ScriptReference references = 3;
+}
+
+message ValidateScriptResponse {
+  repeated Violation violations = 1;
+}

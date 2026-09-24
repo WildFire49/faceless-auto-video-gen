@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package rewind.v1;
+
+import "rewind/v1/script.proto";
+
+// ScriptsService is the Gate C surface for the dashboard (SPEC.md 5.4, 8.2).
+//
+// Like the other gate services, every mutation returns the whole recomputed
+// view. An edit is saved, then re-validated by the worker's rules before the
+// view comes back, so the dashboard always shows what is wrong NOW.
+//
+// Regenerating the whole script is not here: that is "send back" on the gate
+// (VideoService.RejectGate), which reruns the script step and logs why.
+service ScriptsService {
+  rpc GetScript(GetScriptRequest) returns (GetScriptResponse);
+
+  // UpdateBeat rewrites what one beat says or shows.
+  rpc UpdateBeat(UpdateBeatRequest) returns (UpdateBeatResponse);
+
+  // ChooseTitle picks one of the title options, or a title typed in full.
+  rpc ChooseTitle(ChooseTitleRequest) returns (ChooseTitleResponse);
+}
+
+message ScriptView {
+  // False until the script step has run.
+  bool exists = 1;
+  Script script = 2;
+
+  bool can_approve = 3;
+  // e.g. "2 rules broken" or "choose a title".
+  string approval_blocker = 4;
+}
+
+message GetScriptRequest {
+  string video_id = 1;
+}
+message GetScriptResponse {
+  ScriptView view = 1;
+}
+
+message UpdateBeatRequest {
+  string video_id = 1;
+  // 1-based.
+  int32 n = 2;
+  string voice = 3;
+  string on_screen_text = 4;
+  string year_stamp = 5;
+  // The beat's COMPLETE list of comparisons after the edit -- always sent in
+  // full, since an empty list means "none". Lets the reviewer take a
+  // comparison out of a beat that does not cite its fact, which a first live
+  // run showed cannot otherwise be fixed at Gate C. What they choose is
+  // re-checked like any edit: only comparisons selected at Gate B pass.
+  repeated string ref_ids = 6;
+}
+message UpdateBeatResponse {
+  ScriptView view = 1;
+}
+
+message ChooseTitleRequest {
+  string video_id = 1;
+  string title = 2;
+}
+message ChooseTitleResponse {
+  ScriptView view = 1;
+}
