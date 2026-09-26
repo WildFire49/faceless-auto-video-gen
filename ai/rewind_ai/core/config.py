@@ -73,6 +73,8 @@ class ResearchSettings:
     sources: list[str] = field(default_factory=lambda: ["wikipedia", "user_url"])
     evidence_match_threshold: float = 0.90
     max_articles: int = 3
+    search_pool: int = 3
+    offtopic_markers: list[str] = field(default_factory=list)
     max_items: int = 40
 
 
@@ -179,12 +181,17 @@ def _research_settings(channel: dict[str, Any]) -> ResearchSettings:
 
     defaults = ResearchSettings()
     sources = raw.get("sources")
+    markers = raw.get("offtopic_markers")
     return ResearchSettings(
         sources=[str(s) for s in sources] if isinstance(sources, list) else defaults.sources,
         evidence_match_threshold=float(
             raw.get("evidence_match_threshold", defaults.evidence_match_threshold)
         ),
         max_articles=int(raw.get("max_articles", defaults.max_articles)),
+        search_pool=int(raw.get("search_pool", defaults.search_pool)),
+        offtopic_markers=[str(m) for m in markers]
+        if isinstance(markers, list)
+        else defaults.offtopic_markers,
         max_items=int(raw.get("max_items", defaults.max_items)),
     )
 

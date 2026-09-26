@@ -110,7 +110,13 @@ def _build_fetchers(settings: Settings) -> list[SourceFetcher]:
             raise
 
         if name == "wikipedia":
-            built.append(cls(max_articles=settings.research.max_articles))
+            built.append(
+                cls(
+                    max_articles=settings.research.max_articles,
+                    search_pool=settings.research.search_pool,
+                    offtopic_markers=settings.research.offtopic_markers,
+                )
+            )
         else:
             built.append(cls())
 

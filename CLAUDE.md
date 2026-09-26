@@ -155,6 +155,12 @@ consumes these facts, so this is the foundation everything else stands on.
   them into 2 eras and Gate A refused them. Selection is round-robin across groups.
   Fixing "too many to review" created "too narrow to use" -- watch for that shape.
 - a trim must never go below what the gate requires
+- **search ranks by word overlap, not meaning.** "iron" researched "Iron Man"; "sandals"
+  returns two companies. The verifier cannot catch it -- those facts are true to their
+  source. Screening is `research/relevance.py`; backfilling rejected hits just pulls in
+  more overlap ("Iron Cross"), so `search_pool` defaults to the article cap.
+- never benchmark Ollama while an E2E is running: one daemon queues both, and the
+  timings of each look like a slow machine
 Kept here because each was invisible to isolated tests and would recur:
 - a step must declare `From → Running → To`; a step that only knows its output status
   leaves freshly queued videos untouched

@@ -31,10 +31,10 @@ limits:
 
 llm:
   provider: ollama # swap: openai_compat
-  # qwen3:8b rather than qwen2.5:14b. Fact extraction is pure structured
-  # output, and Qwen3 is the most reliable sub-8B model at schema-following;
-  # ~5 GB at Q4 also leaves headroom on an 8 GB card for FLUX from M6.
-  model: "qwen3:8b"
+  # qwen2.5:7b-instruct, as SPEC.md 12 recommends. Measured on an M-series
+  # Mac, 16 GB: 4.8 s per 6000-char chunk against 7.1 s for qwen3:8b, and
+  # research is ~20 chunks. ~4.7 GB at Q4 still leaves room for FLUX in M6.
+  model: "qwen2.5:7b-instruct"
   # Low temperature: we want the model to copy evidence sentences verbatim,
   # not to write nicely. Creativity here shows up as hallucinated dates.
   temperature: 0.1
@@ -71,6 +71,41 @@ research:
   evidence_match_threshold: 0.90
   # Cap on Wikipedia articles followed per topic.
   max_articles: 3
+  # Search hits considered to fill that cap. Equal to it on purpose: widening
+  # it lets a rejected hit be replaced, but the replacements are more word
+  # overlap -- measured, "iron" backfilled "Iron Cross" (a medal) and
+  # "sandals" backfilled "Sandals Church". Fewer articles beats padded ones.
+  search_pool: 3
+  # A hit whose Wikipedia short description contains one of these words (whole
+  # word, any case) is not researched: search ranks by word overlap, so "iron"
+  # finds "Iron Man" and "sandals" finds "Sandals Resorts". Fiction wastes a
+  # third of the research; companies also break the no-brands rule. The best
+  # match is always kept -- the user chose that topic.
+  offtopic_markers:
+    # works of fiction and entertainment
+    - superhero
+    - comics
+    - fictional
+    - character
+    - film
+    - novel
+    - album
+    - song
+    - band
+    - video game
+    - television series
+    - manga
+    - anime
+    # companies and brands
+    - company
+    - manufacturer
+    - brand
+    - corporation
+    - retailer
+    - operator
+    - franchise
+    - subsidiary
+    - record label
 
 visuals:
   backend: flux_diffusers # swap: comfyui_api | sdxl
