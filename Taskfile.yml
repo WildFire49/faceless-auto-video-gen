@@ -56,7 +56,10 @@ tasks:
     desc: Create the 3.11 venv and install the worker
     cmds:
       - uv venv --python 3.11
-      - uv pip install -e ".[dev]"
+      # --python pins the target: without it uv installs into whatever
+      # interpreter is active (a conda base, say) and leaves .venv empty,
+      # so every {{.PY}} task then fails on a missing import.
+      - uv pip install --python "{{.PY}}" -e ".[dev]"
 
   setup:web:
     dir: web
@@ -124,7 +127,7 @@ tasks:
   dev:ai:
     dir: ai
     cmds:
-      - "{{.PY}} -m rewind_ai.server --llm-model qwen2.5:14b"
+      - "{{.PY}} -m rewind_ai.server"
 
   dev:api:
     dir: api
