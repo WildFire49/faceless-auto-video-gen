@@ -79,6 +79,17 @@ class ResearchSettings:
 
 
 @dataclass(frozen=True, slots=True)
+class ComputeSettings:
+    """The ``compute:`` block of ``config/channel.yaml``.
+
+    Which GPU model work runs on. A swap, so moving between an Apple Silicon
+    Mac and an NVIDIA box is this one value.
+    """
+
+    accelerator: str = "apple_mps"
+
+
+@dataclass(frozen=True, slots=True)
 class ContentSettings:
     """The ``content:`` block of ``config/channel.yaml``.
 
@@ -98,6 +109,7 @@ class Settings:
     llm: LLMSettings = field(default_factory=LLMSettings)
     research: ResearchSettings = field(default_factory=ResearchSettings)
     content: ContentSettings = field(default_factory=ContentSettings)
+    compute: ComputeSettings = field(default_factory=ComputeSettings)
 
 
 def find_config_dir(start: Path | None = None) -> Path:
@@ -146,7 +158,15 @@ def load(config_dir: Path | None = None) -> Settings:
         llm=_llm_settings(channel),
         research=_research_settings(channel),
         content=_content_settings(channel),
+        compute=_compute_settings(channel),
     )
+
+
+def _compute_settings(channel: dict[str, Any]) -> ComputeSettings:
+    raw = channel.get("compute")
+    if not isinstance(raw, dict):
+        return ComputeSettings()
+    return ComputeSettings(accelerator=str(raw.get("accelerator", ComputeSettings().accelerator)))
 
 
 def _content_settings(channel: dict[str, Any]) -> ContentSettings:

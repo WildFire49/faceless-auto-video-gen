@@ -44,8 +44,10 @@
 
 ### 1.2 Non-functional
 - **Cost:** $0 software. Open-source models, free APIs only.
-- **Hardware:** Runs locally. Target: NVIDIA GPU with ≥8 GB VRAM. Fallback: CPU (Kokoro voice) +
-  free Kaggle/Colab GPU for image generation.
+- **Hardware:** Runs locally. Target: Apple Silicon Mac (M4) with ≥16 GB unified memory, models
+  on the GPU through Metal (`mps`). The accelerator is a swap (`compute.accelerator` in
+  `config/channel.yaml`): `nvidia_cuda` targets an NVIDIA GPU with ≥8 GB VRAM instead.
+  Fallback: CPU (Kokoro voice) + free Kaggle/Colab GPU for image generation.
 - **Throughput:** 1–2 finished Shorts/day with ≤20 min human time per video.
 - **Accuracy:** Zero unsourced factual claims. Jokes must be clearly jokes.
 - **Resumability:** Any step can crash and resume without redoing earlier steps.
@@ -1108,11 +1110,11 @@ stubbed LLM, asserts the browser API returns the right status.
 | Channel name | Rewind / Before It Was Easy / your idea | ☐ |
 | Voice | Chatterbox (own clone) / Kokoro preset | ☐ |
 | Art style | Painterly documentary / vintage print / 3D diorama | ☐ |
-| LLM size | qwen2.5:14b / 7b (smaller GPU) | ☐ |
+| LLM size | qwen2.5:14b / 7b (smaller GPU) | ☑ **qwen2.5:7b-instruct** — "iron" research in 564 s on the M4 |
 | Video length | 45s (9 beats) / 60s (12 beats) | ☐ |
 | Research sources v1 | Wikipedia + your URLs / + SearXNG web search | ☐ |
 | First 3 topics | iron, mouse, sandals / your picks | ☐ |
-| Your GPU | model + VRAM | ☑ **NVIDIA RTX 4060 Laptop, 8188 MB VRAM** (measured by the M0 GPU probe) — meets the ≥8 GB target, so no CPU fallback is needed; still worth choosing `qwen2.5:7b` over `14b` |
+| Your GPU | model + VRAM | ☑ **Apple M4, 16 GB unified memory, Metal (`mps`)** (measured by the GPU probe) — `compute.accelerator: apple_mps`. Previously an NVIDIA RTX 4060 Laptop (8188 MB VRAM); switching back is `nvidia_cuda`. At M6, check FLUX fits beside the LLM in 16 GB of shared memory |
 
 ---
 

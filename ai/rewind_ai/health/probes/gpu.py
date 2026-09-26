@@ -1,67 +1,38 @@
-"""Probe: is an NVIDIA GPU visible, and how much VRAM does it have?
+"""Probe: can model work run on the configured GPU?
 
-Reads nvidia-smi rather than importing torch: this probe must stay fast and
-must work before the heavy ML dependencies are installed (they arrive at M5).
+Knows no vendor. It asks the accelerator chosen by ``compute.accelerator`` in
+config (Apple Silicon or NVIDIA) to inspect the machine, so the dashboard
+reports the GPU this machine actually uses.
 """
 
 from __future__ import annotations
 
-import shutil
-import subprocess
-
+from rewind_ai.compute.base import Accelerator, Readiness
 from rewind_ai.core.registry import register
 from rewind_ai.health.base import ProbeResult, Status
 
-#: SPEC.md 1.2 targets a GPU with "at least 8 GB VRAM". The threshold is set
-#: below a nominal 8 GB on purpose: cards report slightly less than their
-#: marketing figure once firmware reserves its share -- an RTX 4060 8 GB
-#: reports 8188 MB -- so testing against a round 8192 would fail every card it
-#: is meant to accept. Below this, the fallback path applies (Kokoro on CPU,
-#: smaller LLM, remote image generation).
-MIN_VRAM_MB = 7600
+_STATUS = {
+    Readiness.READY: Status.OK,
+    # Both still run -- on smaller models or CPU fallbacks -- so neither is DOWN.
+    Readiness.LIMITED: Status.DEGRADED,
+    Readiness.UNAVAILABLE: Status.DEGRADED,
+}
 
 
 @register("health_probe", "gpu")
 class GPUProbe:
-    """Reports GPU presence and VRAM via nvidia-smi."""
+    """Reports the configured accelerator's view of this machine."""
 
     name = "gpu"
 
+    def __init__(self, *, accelerator: Accelerator) -> None:
+        self._accelerator = accelerator
+
     def check(self) -> ProbeResult:
-        binary = shutil.which("nvidia-smi")
-        if binary is None:
-            return ProbeResult(
-                self.name,
-                Status.DEGRADED,
-                "no nvidia-smi; CPU fallback applies (Kokoro voice, remote image gen)",
-            )
-
         try:
-            out = subprocess.run(
-                [binary, "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
-                capture_output=True,
-                text=True,
-                timeout=5,
-                check=False,
-            )
-        except (OSError, subprocess.SubprocessError) as exc:
-            return ProbeResult(self.name, Status.DEGRADED, f"could not run nvidia-smi: {exc}")
-
-        line = out.stdout.strip().splitlines()[0] if out.stdout.strip() else ""
-        if not line:
-            return ProbeResult(self.name, Status.DEGRADED, "nvidia-smi reported no GPU")
-
-        name, _, vram_raw = line.partition(",")
-        try:
-            vram_mb = int(vram_raw.strip())
-        except ValueError:
-            return ProbeResult(self.name, Status.OK, f"{name.strip()} (VRAM unknown)")
-
-        detail = f"{name.strip()}, {vram_mb} MB VRAM"
-        if vram_mb < MIN_VRAM_MB:
+            report = self._accelerator.inspect()
+        except Exception as exc:  # noqa: BLE001 - a probe must never crash the worker
             return ProbeResult(
-                self.name,
-                Status.DEGRADED,
-                f"{detail}; below the {MIN_VRAM_MB} MB target, expect CPU fallbacks",
+                self.name, Status.DEGRADED, f"{self._accelerator.name}: could not inspect: {exc}"
             )
-        return ProbeResult(self.name, Status.OK, detail)
+        return ProbeResult(self.name, _STATUS[report.readiness], report.detail)

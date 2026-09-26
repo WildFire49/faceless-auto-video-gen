@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from rewind_ai.compute import factory as accelerator_factory
+from rewind_ai.compute.base import Accelerator
 from rewind_ai.core import registry
 from rewind_ai.core.config import Settings
 from rewind_ai.core.logging import get_logger
@@ -41,6 +43,8 @@ class Container:
     research: ResearchService
     llm: LLM
     content_format: ContentFormat
+    #: The GPU model work runs on. M5/M6 load models onto ``accelerator.device``.
+    accelerator: Accelerator
 
 
 def build(settings: Settings) -> Container:
@@ -62,8 +66,11 @@ def build(settings: Settings) -> Container:
     llm = llm_factory.build(llm_config)
 
     content_format = format_factory.build(settings.content.format)
+    accelerator = accelerator_factory.build(settings.compute.accelerator)
     fetchers = _build_fetchers(settings)
-    probes = _build_probes(llm_model=settings.llm.model, base_url=settings.llm.base_url)
+    probes = _build_probes(
+        llm_model=settings.llm.model, base_url=settings.llm.base_url, accelerator=accelerator
+    )
 
     log.info(
         "providers registered",
@@ -71,6 +78,8 @@ def build(settings: Settings) -> Container:
         available_formats=format_factory.available(),
         llm=settings.llm.provider,
         model=settings.llm.model,
+        accelerator=accelerator.name,
+        device=accelerator.device,
         research_sources=[f.name for f in fetchers],
         health_probes=registry.available("health_probe"),
     )
@@ -80,6 +89,7 @@ def build(settings: Settings) -> Container:
         health=HealthChecker(version=VERSION, probes=probes),
         llm=llm,
         content_format=content_format,
+        accelerator=accelerator,
         research=ResearchService(
             fetchers=fetchers,
             llm=llm,
@@ -123,7 +133,7 @@ def _build_fetchers(settings: Settings) -> list[SourceFetcher]:
     return built
 
 
-def _build_probes(*, llm_model: str, base_url: str) -> list[Probe]:
+def _build_probes(*, llm_model: str, base_url: str, accelerator: Accelerator) -> list[Probe]:
     """Instantiate every registered health probe.
 
     Probes differ in their constructor arguments, so this function knows how
@@ -136,6 +146,8 @@ def _build_probes(*, llm_model: str, base_url: str) -> list[Probe]:
         try:
             if name == "ollama":
                 built.append(cls(base_url=base_url, model=llm_model))
+            elif name == "gpu":
+                built.append(cls(accelerator=accelerator))
             else:
                 built.append(cls())
         except Exception as exc:  # noqa: BLE001 - see docstring

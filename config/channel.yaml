@@ -43,6 +43,14 @@ llm:
   # The model gets one chunk at a time; larger chunks lose facts in the middle.
   max_chunk_chars: 6000
 
+# WHICH GPU MODEL WORK RUNS ON.
+#
+# apple_mps runs voice (M5) and images (M6) on an Apple Silicon GPU through
+# Metal; nvidia_cuda runs them on an NVIDIA card. The dashboard's GPU chip
+# reports whichever is set. Ollama picks its GPU itself and ignores this.
+compute:
+  accelerator: apple_mps # swap: nvidia_cuda
+
 # WHAT KIND OF VIDEO THIS CHANNEL MAKES.
 #
 # One line. The format owns what an item is, the prompts that extract it, which
